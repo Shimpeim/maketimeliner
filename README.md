@@ -49,7 +49,7 @@ run_app()                                             # Shiny editor
 
 ## Interactive HTML
 
-Hover an event to see its details and its **picture** (the `image` URL column; http(s), relative paths or `data:image/…`; size via `tooltip_image_width`). Hover a timeline to highlight it; click to pin it (you can pin several); toggle
+Hover an event to see its details and its **picture** (the `image` URL column; http(s), relative paths or `data:image/…`; size via `tooltip_image_width`). By default R downloads each picture when rendering and embeds it in the HTML (`embed_images = TRUE`, max `image_max_mb`), so it shows even when the viewer cannot reach the image host. Hover a timeline to highlight it; click to pin it (you can pin several); toggle
 timelines on and off; dim streams; search events; click an event, timeline,
 stream or window to open the details panel (sequence, stream crossings, events
 inside a window); zoom with the scroll wheel; drag to pan; download the SVG.

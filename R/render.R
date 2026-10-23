@@ -98,6 +98,7 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
   })
   tl <- Filter(function(t) length(t$nodes) > 0, tl)
   img <- .safe_url(nd$image)
+  if (isTRUE(L$S$embed_images)) img <- .embed_images(img, L$S$image_max_mb)
   w  <- L$windows
   list(
     title = L$S$title,
@@ -142,3 +143,76 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
   x[!ok] <- ""
   x
 }
+
+# Download (or read) pictures and inline them as data: URIs so the HTML does
+# not depend on the viewer reaching the image host (hotlink rules, proxies,
+# IDE viewers, offline use). Results (including failures) are cached per
+# session; on failure the original URL is kept and a warning names the reason.
+# maketimeliner:::.clear_image_cache() forces a re-download.
+.img_cache <- new.env(parent = emptyenv())
+
+.embed_images <- function(urls, max_mb = 5) {
+  vapply(urls, function(u) {
+    if (!nzchar(u) || grepl("^data:", u, ignore.case = TRUE)) return(u)
+    key <- paste(u, max_mb)
+    hit <- .img_cache[[key]]
+    if (is.null(hit)) {
+      hit <- tryCatch(list(ok = TRUE, value = .fetch_image(u, max_mb)),
+                      error = function(e) list(ok = FALSE, value = conditionMessage(e)))
+      assign(key, hit, envir = .img_cache)
+    }
+    if (hit$ok) return(hit$value)
+    warning("Could not embed image ", u, ": ", hit$value,
+            " (the HTML will try to load the URL directly).", call. = FALSE)
+    u
+  }, character(1), USE.NAMES = FALSE)
+}
+
+.fetch_image <- function(u, max_mb) {
+  remote <- grepl("^(https?:)?//", u, ignore.case = TRUE)
+  if (remote) {
+    if (startsWith(u, "//")) u <- paste0("https:", u)
+    tf <- tempfile(); on.exit(unlink(tf), add = TRUE)
+    ua <- paste0("maketimeliner/",
+                 tryCatch(as.character(utils::packageVersion("maketimeliner")),
+                          error = function(e) "dev"),
+                 " (R ", getRversion(), "; https://github.com/Shimpeim/maketimeliner)")
+    old <- options(timeout = max(20, getOption("timeout"))); on.exit(options(old), add = TRUE)
+    st <- suppressWarnings(utils::download.file(u, tf, method = "libcurl", quiet = TRUE,
+                                                mode = "wb",
+                                                headers = c("User-Agent" = ua)))
+    if (!identical(as.integer(st), 0L)) stop("download failed")
+    path <- tf
+  } else {
+    path <- sub("^file://", "", u, ignore.case = TRUE)
+    path <- utils::URLdecode(path)
+    if (!file.exists(path)) stop("file not found (relative to ", getwd(), ")")
+  }
+  sz <- file.size(path)
+  if (sz > max_mb * 1024^2)
+    stop(sprintf("%.1f MB exceeds image_max_mb = %s", sz / 1024^2, max_mb))
+  raw <- readBin(path, "raw", sz)
+  mime <- .sniff_mime(raw)
+  if (is.na(mime)) stop("not a recognised image (got ",
+                        if (sz) "non-image content" else "an empty file",
+                        "; the server may have refused the request)")
+  paste0("data:", mime, ";base64,", jsonlite::base64_enc(raw))
+}
+
+.sniff_mime <- function(raw) {
+  h <- function(n) as.integer(raw[seq_len(min(n, length(raw)))])
+  b <- h(16)
+  if (length(b) >= 3 && all(b[1:3] == c(0xFF, 0xD8, 0xFF))) return("image/jpeg")
+  if (length(b) >= 8 && all(b[1:8] == c(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))) return("image/png")
+  if (length(b) >= 4 && all(b[1:4] == c(0x47, 0x49, 0x46, 0x38))) return("image/gif")
+  if (length(b) >= 12 && all(b[1:4] == c(0x52, 0x49, 0x46, 0x46)) &&
+      all(b[9:12] == c(0x57, 0x45, 0x42, 0x50))) return("image/webp")
+  if (length(b) >= 2 && all(b[1:2] == c(0x42, 0x4D))) return("image/bmp")
+  head <- raw[seq_len(min(1024, length(raw)))]
+  txt  <- rawToChar(head[head != as.raw(0)])
+  if (grepl("<svg", txt, fixed = TRUE, useBytes = TRUE) ||
+      grepl("<SVG", txt, fixed = TRUE, useBytes = TRUE)) return("image/svg+xml")
+  NA_character_
+}
+
+.clear_image_cache <- function() rm(list = ls(.img_cache), envir = .img_cache)

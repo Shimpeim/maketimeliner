@@ -158,7 +158,8 @@ test_that("node image URLs reach the HTML data; unsafe schemes are dropped", {
   m$nodes$image <- c("https://example.org/a.png", "img/b.jpg",
                      "javascript:alert(1)", NA)
   expect_warning(out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL,
-                                            svg_file = NULL, tooltip_image_width = 300),
+                                            svg_file = NULL, tooltip_image_width = 300,
+                                            embed_images = FALSE),
                  "unsupported image")
   d <- html_data(out$html)
   imgs <- vapply(d$nodes, function(n) n$image, character(1))
@@ -172,4 +173,31 @@ test_that("image column survives the CSV round trip", {
   spec$nodes$image[1] <- "https://example.org/x.png"
   d <- tempfile(); write_timeline_csvs(spec, d, "img")
   expect_equal(read_timeline_csvs(d)$nodes$image[1], "https://example.org/x.png")
+})
+
+test_that("local pictures are embedded as data URIs (embed_images = TRUE)", {
+  png <- tempfile(fileext = ".png")
+  writeBin(jsonlite::base64_dec("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), png)
+  m <- mini(); m$nodes$image <- c(png, "", "", "")
+  out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL)
+  d <- html_data(out$html)
+  expect_match(d$nodes[[1]]$image, "^data:image/png;base64,")
+  out2 <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
+                              embed_images = FALSE)
+  expect_equal(html_data(out2$html)$nodes[[1]]$image, png)
+})
+
+test_that("unembeddable pictures keep the URL and warn with a reason", {
+  m <- mini(); m$nodes$image <- c("no/such/file.png", "", "", "")
+  expect_warning(out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL),
+                 "file not found")
+  expect_equal(html_data(out$html)$nodes[[1]]$image, "no/such/file.png")
+  txt <- tempfile(fileext = ".png"); writeLines("not an image", txt)
+  m$nodes$image[1] <- txt
+  expect_warning(timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL),
+                 "not a recognised image")
+  big <- tempfile(fileext = ".png"); writeBin(as.raw(c(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, rep(0, 3000))), big)
+  m$nodes$image[1] <- big
+  expect_warning(timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
+                                     image_max_mb = 0.001), "exceeds image_max_mb")
 })

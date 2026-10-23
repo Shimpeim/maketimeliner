@@ -204,7 +204,8 @@ matrixServer <- function(id, rv, key, file_stub) {
 SETTING_GROUPS <- list(
   "Page & axis" = c("title", "time_scale", "date_format", "axis_label", "show_axis",
                     "show_grid", "plot_width", "padding", "background", "font_family",
-                    "show_legend", "legend_title", "tooltip_image_width"),
+                    "show_legend", "legend_title", "tooltip_image_width",
+                    "embed_images", "image_max_mb"),
   "Streams" = c("stream_height", "stream_gap", "stream_label_width", "stream_fontsize",
                 "stream_colours", "stream_alpha"),
   "Events (nodes)" = c("node_shape", "node_colour", "node_alpha", "node_stroke",

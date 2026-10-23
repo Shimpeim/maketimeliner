@@ -68,6 +68,8 @@ timeline_defaults <- function() {
     background         = "#FFFFFF",
     font_family        = "system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
     tooltip_image_width = 240,        # px; max width of node pictures on mouse-over
+    embed_images       = TRUE,        # download pictures at render time into the HTML
+    image_max_mb       = 5,           # skip embedding pictures larger than this
     show_legend        = TRUE,
     legend_title       = "Legend"
   )

@@ -217,8 +217,8 @@ const placeTT = (ev) => { if (ev) lastEv = ev; if (!lastEv) return;
   tt.style.left = x + 'px'; tt.style.top = y + 'px'; };
 const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block'; placeTT(ev);
   tt.querySelectorAll('img').forEach(im => { im.onload = () => placeTT();
-    im.onerror = () => { im.replaceWith(Object.assign(document.createElement('div'), {textContent: '[image not available]', style: 'color:#f99;font-size:11px;margin-top:4px'})); placeTT(); }; }); };
-const imgTag = (src, cls) => src ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + esc(src) + '" alt="" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
+    im.onerror = () => { im.replaceWith(Object.assign(document.createElement('div'), {textContent: '[image not available: ' + (/^data:/.test(im.getAttribute('src')) ? 'embedded data' : im.getAttribute('src').replace(/^https?:\/\/([^/]+).*/, '$1')) + ']', style: 'color:#f99;font-size:11px;margin-top:4px'})); placeTT(); }; }); };
+const imgTag = (src, cls) => src ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + esc(src) + '" alt="" referrerpolicy="no-referrer" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
 const hideTT = () => { tt.style.display = 'none'; };
 q('.tl-edge').forEach(el => {
   const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
