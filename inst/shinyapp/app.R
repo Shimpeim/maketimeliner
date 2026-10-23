@@ -376,8 +376,9 @@ server <- function(input, output, session) {
     load_spec(timeline_spec(adj, nodes, settings = list(title = "New timeline")), "timeline")
   })
   observeEvent(input$batch, {
-    d <- file.path(tempdir(), paste0("mtl_import_", as.integer(Sys.time())))
-    dir.create(d, showWarnings = FALSE)
+    d <- tempfile("mtl_import_")  # unique per upload; a shared folder mixes diagrams
+    dir.create(d)
+    on.exit(unlink(d, recursive = TRUE), add = TRUE)
     file.copy(input$batch$datapath, file.path(d, input$batch$name), overwrite = TRUE)
     pre <- trimws(input$batch_prefix %||% ""); if (!nzchar(pre)) pre <- NULL
     spec <- tryCatch(withCallingHandlers(read_timeline_csvs(d, prefix = pre),
@@ -468,9 +469,9 @@ server <- function(input, output, session) {
   output$dl_zip <- downloadHandler(
     filename = function() paste0(rv$prefix, "_csvs.zip"),
     content = function(f) {
-      d <- file.path(tempdir(), paste0("mtl_export_", as.integer(Sys.time())))
+      d <- tempfile("mtl_export_"); on.exit(unlink(d, recursive = TRUE), add = TRUE)
       paths <- write_timeline_csvs(current_spec(), d, rv$prefix)
-      old <- setwd(d); on.exit(setwd(old))
+      old <- setwd(d); on.exit(setwd(old), add = TRUE, after = FALSE)
       utils::zip(f, basename(paths), flags = "-q")
     })
 

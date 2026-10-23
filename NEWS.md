@@ -4,6 +4,12 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-23 — Shiny import fix
+
+* Fixed: batch CSV upload failed when two uploads happened within the same
+  second, because they shared one temporary folder; import/export folders are
+  now unique and deleted afterwards (#11). New test `test-shiny-import.R`.
+
 ## 2026-10-23 — image embedding (1dd3789)
 
 * Event pictures (`image` column) are downloaded or read at render time and
