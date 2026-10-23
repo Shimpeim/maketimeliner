@@ -57,12 +57,14 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
                                 adj_overlay = NULL, overlay_edge_props = NULL,
                                 overlay_edge_labels = NULL, windows = NULL,
                                 phases = NULL, legend_node_colour = NULL,
-                                legend_node_shape = NULL, settings = list(),
+                                legend_node_shape = NULL, link_props = NULL,
+                                legend_linetypes = NULL, settings = list(),
                                 html_file = "timeline.html",
                                 svg_file = "timeline.svg", ...) {
   spec <- timeline_spec(adj_matrix, node_props, streams, edge_props, edge_labels,
                         adj_overlay, overlay_edge_props, overlay_edge_labels,
                         windows, phases, legend_node_colour, legend_node_shape,
+                        link_props = link_props, legend_linetypes = legend_linetypes,
                         settings = utils::modifyList(as.list(settings), list(...)))
   render_timeline(spec, html_file = html_file, svg_file = svg_file)
 }
@@ -110,7 +112,8 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
            description = nd$description[i], image = img[i],
            codes = I(codes_of[[i]]))),
     edges = lapply(seq_len(nrow(e)), function(i)
-      list(code = e$code[i], from = e$from[i], to = e$to[i], text = e$text[i])),
+      list(code = e$code[i], from = e$from[i], to = e$to[i], text = e$text[i],
+           link_label = e$link_label[i], link_description = e$link_description[i])),
     streams = lapply(seq_len(nrow(L$streams)), function(i)
       list(id = L$streams$id[i], label = gsub("\n", " ", L$streams$label[i]),
            colour = L$streams$colour[i], description = L$streams$description[i])),

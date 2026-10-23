@@ -4,6 +4,14 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-23 — per-link styles
+
+* New `link_props` table (`_link_props.csv`, Shiny "Link styles"): overrides
+  colour, alpha, width and linetype of single links, with a label and
+  description shown in the HTML tooltip — e.g. to show which actor carried a
+  move between streams. New `legend_linetypes` table for a line-type legend.
+* Fixed: dotted line-type samples were invisible in the legend (#12).
+
 ## 2026-10-23 — Shiny import fix
 
 * Fixed: batch CSV upload failed when two uploads happened within the same

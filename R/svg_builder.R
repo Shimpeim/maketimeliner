@@ -58,11 +58,12 @@
                                           "start", " class=\"tl-legend-sec\""))
       ly <- ly + 18; cx <- lx0
       for (it in sec$items) {
-        iw <- 30 + .text_w(it$label, 11) + 18
+        gw <- it$gw %||% 30
+        iw <- gw + .text_w(it$label, 11) + 18
         if (cx + iw > lx0 + maxw && cx > lx0) { cx <- lx0; ly <- ly + 22 }
         leg_lines <- c(leg_lines, sprintf("<g class=\"tl-legend-item\"%s>%s%s</g>",
           it$attrs, it$glyph(cx + 12, ly + 6),
-          .text_svg(cx + 30, ly + 10, it$label, 11, "#333333", "start")))
+          .text_svg(cx + gw, ly + 10, it$label, 11, "#333333", "start")))
         cx <- cx + iw
       }
       ly <- ly + 30
@@ -171,7 +172,7 @@
     add(sprintf("<path class=\"tl-edge\" id=\"tl-e%d\" data-tl=\"%s\" data-from=\"%s\" data-to=\"%s\" d=\"%s\" fill=\"none\"%s><title>%s</title></path>",
                 i, .esc(e$code[i]), .esc(e$from[i]), .esc(e$to[i]), e$path[i],
                 .stroke_attr(e$colour[i], e$width[i], e$alpha[i], e$linetype[i]),
-                .esc(e$label[i])))
+                .esc(if (nzchar(e$link_label[i])) paste0(e$label[i], " \u2014 ", e$link_label[i]) else e$label[i])))
   }
   add("</g>")
   if (nrow(e) && any(nzchar(e$text))) {
@@ -258,6 +259,15 @@
     secs[[length(secs) + 1]] <- list(title = "Timelines", items = lapply(seq_len(nrow(cs)), function(i)
       list(label = cs$label[i], glyph = line_glyph(cs$colour[i], cs$width[i], cs$alpha[i], cs$linetype[i]),
            attrs = sprintf(" data-tl=\"%s\"", .esc(cs$code[i])))))
+  lt <- spec$legend_linetypes
+  lt <- lt[!is.na(lt$linetype) & nzchar(trimws(as.character(lt$linetype))), , drop = FALSE]
+  if (nrow(lt))
+    secs[[length(secs) + 1]] <- list(title = "Line types", items = lapply(seq_len(nrow(lt)), function(i)
+      list(label = .chr(lt$label[i], ""), attrs = "", gw = 62,
+           glyph = function(x, y) sprintf(
+             "<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke-linecap=\"round\"%s/>", .r(x - 10), .r(y), .r(x + 42), .r(y),
+             .stroke_attr(.hex(lt$colour[i], "#333333"), .num(lt$width[i], 2.5), 1,
+                          as.character(lt$linetype[i]))))))
   os <- L$overlay_codes[L$overlay_codes$code %in% unique(L$overlay$code), ]
   if (nrow(os))
     secs[[length(secs) + 1]] <- list(title = "Links", items = lapply(seq_len(nrow(os)), function(i)

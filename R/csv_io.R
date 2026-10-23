@@ -6,7 +6,9 @@
   overlay_edge_labels = "overlay_edge_labels",
   overlay_edge_props  = "overlay_edge_props",
   legend_colours      = "legend_colou?rs",
+  legend_linetypes    = "legend_linetypes",
   legend_shapes       = "legend_shapes",
+  link_props          = "link_props",
   edge_labels         = "edge_labels",
   edge_props          = "edge_props",
   node_props          = "node_props",
@@ -60,7 +62,8 @@
 #' | `_streams.csv` | `id, label, order, colour, alpha, stroke, stroke_width, linetype, height, fontcolour, description` |
 #' | `_windows.csv` | `start, end, label, colour, alpha, stroke, stroke_width, linetype, streams, description` |
 #' | `_phases.csv` | `phase, order, label` (ordinal time axis) |
-#' | `_legend_colours.csv`, `_legend_shapes.csv` | legend tables |
+#' | `_link_props.csv` | per-link style overrides: `from, to, weight, colour, alpha, width, linetype, label, description` |
+#' | `_legend_colours.csv`, `_legend_shapes.csv`, `_legend_linetypes.csv` | legend tables |
 #' | `_settings.csv` | `Setting, Value` |
 #'
 #' Only `_node_props.csv` is required.
@@ -113,6 +116,8 @@ read_timeline_csvs <- function(path, prefix = NULL) {
     phases              = rd("phases"),
     legend_node_colour  = rd("legend_colours"),
     legend_node_shape   = rd("legend_shapes"),
+    link_props          = rd("link_props"),
+    legend_linetypes    = rd("legend_linetypes"),
     settings            = { s <- rd("settings"); if (is.null(s)) list() else s }
   )
 }
@@ -154,7 +159,8 @@ write_timeline_csvs <- function(spec, dir, prefix = "timeline") {
     wdf(spec$overlay_edge_props, "overlay_edge_props"),
     wm(spec$overlay_edge_labels, "overlay_edge_labels"),
     wdf(spec$windows, "windows"), wdf(spec$phases, "phases"),
-    wdf(spec$legend_colours, "legend_colours"), wdf(spec$legend_shapes, "legend_shapes")
+    wdf(spec$legend_colours, "legend_colours"), wdf(spec$legend_shapes, "legend_shapes"),
+    wdf(spec$link_props, "link_props"), wdf(spec$legend_linetypes, "legend_linetypes")
   )
   utils::write.csv(.settings_to_df(spec$settings), fp("settings"), row.names = FALSE,
                    fileEncoding = "UTF-8")

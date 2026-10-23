@@ -223,7 +223,7 @@ const hideTT = () => { tt.style.display = 'none'; };
 q('.tl-edge').forEach(el => {
   const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
   el.addEventListener('mouseenter', ev => { hover = c; apply();
-    showTT(ev, '<b>' + esc(t.label) + '</b>\n' + esc(ND[e.from].label) + ' → ' + esc(ND[e.to].label) + (e.text ? '\n' + esc(e.text) : '') + (t.description ? '\n' + esc(t.description) : '')); });
+    showTT(ev, '<b>' + esc(t.label) + '</b>' + (e.link_label ? ' \u2014 <b>' + esc(e.link_label) + '</b>' : '') + '\n' + esc(ND[e.from].label) + ' → ' + esc(ND[e.to].label) + (e.text ? '\n' + esc(e.text) : '') + (e.link_description ? '\n' + esc(e.link_description) : (t.description ? '\n' + esc(t.description) : ''))); });
   el.addEventListener('mousemove', placeTT);
   el.addEventListener('mouseleave', () => { hover = null; apply(); hideTT(); });
   el.addEventListener('click', ev => { if (moved) return; togglePin(c); showTimeline(c); });

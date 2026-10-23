@@ -12,7 +12,10 @@
                  "stroke_width", "linetype", "streams", "description"),
   phases     = c("phase", "order", "label"),
   legend_colours = c("colour", "label"),
-  legend_shapes  = c("shape", "label")
+  legend_shapes  = c("shape", "label"),
+  link_props     = c("from", "to", "weight", "colour", "alpha", "width",
+                     "linetype", "label", "description"),
+  legend_linetypes = c("linetype", "label", "colour", "width")
 )
 
 # Pad a data.frame to the canonical columns (keeps extra columns at the end).
@@ -101,6 +104,14 @@
 #'   of an ordinal time axis.
 #' @param legend_node_colour data.frame(`colour`, `label`) for the legend.
 #' @param legend_node_shape data.frame(`shape`, `label`) for the legend.
+#' @param link_props Optional data.frame of per-link style overrides: `from`,
+#'   `to`, `weight` (timeline code; blank = every timeline on that link),
+#'   `colour`, `alpha`, `width`, `linetype`, `label`, `description`. Non-blank
+#'   values replace the timeline's `edge_props` style on that link only, e.g. to
+#'   mark which actor carried a move between streams. `label` and `description`
+#'   appear in the HTML tooltip.
+#' @param legend_linetypes data.frame(`linetype`, `label`, `colour`, `width`)
+#'   for a legend section of line types (e.g. actors).
 #' @param settings Named list or `Setting`/`Value` data.frame; see
 #'   [timeline_defaults()].
 #'
@@ -111,7 +122,8 @@ timeline_spec <- function(adj_matrix = NULL, node_props, streams = NULL,
                           adj_overlay = NULL, overlay_edge_props = NULL,
                           overlay_edge_labels = NULL, windows = NULL,
                           phases = NULL, legend_node_colour = NULL,
-                          legend_node_shape = NULL, settings = list()) {
+                          legend_node_shape = NULL, link_props = NULL,
+                          legend_linetypes = NULL, settings = list()) {
   if (missing(node_props) || is.null(node_props) || !NROW(node_props))
     stop("node_props must be a data.frame with at least one row.", call. = FALSE)
   nodes <- .conform(node_props, "node_props")
@@ -170,6 +182,8 @@ timeline_spec <- function(adj_matrix = NULL, node_props, streams = NULL,
     phases              = .conform(phases, "phases"),
     legend_colours      = .conform(legend_node_colour, "legend_colours"),
     legend_shapes       = .conform(legend_node_shape, "legend_shapes"),
+    link_props          = .conform(link_props, "link_props"),
+    legend_linetypes    = .conform(legend_linetypes, "legend_linetypes"),
     settings            = .merge_settings(settings)
   ), class = "timeline_spec")
 }

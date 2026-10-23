@@ -17,6 +17,8 @@ timeline_to_outputs(
   phases = NULL,
   legend_node_colour = NULL,
   legend_node_shape = NULL,
+  link_props = NULL,
+  legend_linetypes = NULL,
   settings = list(),
   html_file = "timeline.html",
   svg_file = "timeline.svg",
@@ -60,6 +62,16 @@ of an ordinal time axis.}
 \item{legend_node_colour}{data.frame(\code{colour}, \code{label}) for the legend.}
 
 \item{legend_node_shape}{data.frame(\code{shape}, \code{label}) for the legend.}
+
+\item{link_props}{Optional data.frame of per-link style overrides: \code{from},
+\code{to}, \code{weight} (timeline code; blank = every timeline on that link),
+\code{colour}, \code{alpha}, \code{width}, \code{linetype}, \code{label}, \code{description}. Non-blank
+values replace the timeline's \code{edge_props} style on that link only, e.g. to
+mark which actor carried a move between streams. \code{label} and \code{description}
+appear in the HTML tooltip.}
+
+\item{legend_linetypes}{data.frame(\code{linetype}, \code{label}, \code{colour}, \code{width})
+for a legend section of line types (e.g. actors).}
 
 \item{settings}{Named list or \code{Setting}/\code{Value} data.frame; see
 \code{\link[=timeline_defaults]{timeline_defaults()}}.}

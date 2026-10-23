@@ -246,7 +246,8 @@ ui <- fluidPage(
               "(<code>_node_props</code>, <code>_adj</code>, <code>_edge_props</code>,",
               "<code>_edge_labels</code>, <code>_overlay</code>, <code>_overlay_edge_props</code>,",
               "<code>_overlay_edge_labels</code>, <code>_streams</code>, <code>_windows</code>,",
-              "<code>_phases</code>, <code>_legend_colours</code>, <code>_legend_shapes</code>,",
+              "<code>_phases</code>, <code>_link_props</code>, <code>_legend_colours</code>,",
+              "<code>_legend_shapes</code>, <code>_legend_linetypes</code>,",
               "<code>_settings</code>). Only <code>_node_props</code> is required."))),
             fileInput("batch", NULL, multiple = TRUE, accept = ".csv",
                       buttonLabel = "Choose CSV files…"),
@@ -280,7 +281,12 @@ ui <- fluidPage(
           tableUI("edge_props", "Timelines (edge_props)", paste(
             "One row per timeline. <b>weight</b> = the code used in the Links matrix.",
             "Edit <i>colour</i>, <i>alpha</i>, <i>width</i>, <i>linetype</i> (solid, dashed,",
-            "dotted, dotdash, longdash, twodash or a dash pattern like <code>8,3</code>)."))),
+            "dotted, dotdash, longdash, twodash or a dash pattern like <code>8,3</code>).")),
+          tableUI("link_props", "Link styles (link_props)", paste(
+            "Optional overrides for single links, e.g. the actor behind a move between",
+            "streams: <b>from</b>, <b>to</b> (event ids), <i>weight</i> (timeline code; blank =",
+            "all timelines on that link), colour, alpha, width, linetype, label, description",
+            "(label/description show in the HTML tooltip)."))),
         tabPanel("Streams",
           tableUI("streams", "Streams", paste(
             "Any number of streams; <i>order</i> = top-to-bottom. Style: colour, alpha,",
@@ -303,7 +309,9 @@ ui <- fluidPage(
         tabPanel("Legend",
           tableUI("legend_colours", "Legend: event colours", "colour, label"),
           tableUI("legend_shapes", "Legend: event shapes",
-                  "shape (circle, ellipse, rect, rounded, diamond, triangle), label")),
+                  "shape (circle, ellipse, rect, rounded, diamond, triangle), label"),
+          tableUI("legend_linetypes", "Legend: line types",
+                  "linetype, label, colour, width (e.g. one row per actor used in Link styles)")),
         tabPanel("Settings",
           div(class = "panel-box", h5("Settings"),
             div(class = "btn-row",
@@ -335,6 +343,8 @@ server <- function(input, output, session) {
     rv$phases         <- as_chr_df(spec$phases, "phases")
     rv$legend_colours <- as_chr_df(spec$legend_colours, "legend_colours")
     rv$legend_shapes  <- as_chr_df(spec$legend_shapes, "legend_shapes")
+    rv$link_props     <- as_chr_df(spec$link_props, "link_props")
+    rv$legend_linetypes <- as_chr_df(spec$legend_linetypes, "legend_linetypes")
     rv$adj   <- spec$adj
     rv$elab  <- spec$edge_labels
     rv$ov    <- spec$overlay
@@ -343,7 +353,8 @@ server <- function(input, output, session) {
     rv$prefix <- prefix
     updateTextInput(session, "prefix", value = prefix)
     keys <- c("nodes", "streams", "edge_props", "ov_props", "windows", "phases",
-              "legend_colours", "legend_shapes", "adj", "elab", "ov", "ovlab")
+              "legend_colours", "legend_shapes", "link_props", "legend_linetypes",
+              "adj", "elab", "ov", "ovlab")
     v <- isolate(rv$ver)
     for (k in keys) v[[k]] <- (v[[k]] %||% 0) + 1
     rv$ver <- v
@@ -362,6 +373,8 @@ server <- function(input, output, session) {
   tableServer("phases", rv, "phases", "phases", "phases")
   tableServer("legend_colours", rv, "legend_colours", "legend_colours", "legend_colours")
   tableServer("legend_shapes", rv, "legend_shapes", "legend_shapes", "legend_shapes")
+  tableServer("link_props", rv, "link_props", "link_props", "link_props")
+  tableServer("legend_linetypes", rv, "legend_linetypes", "legend_linetypes", "legend_linetypes")
   matrixServer("adj", rv, "adj", "adj")
   matrixServer("elab", rv, "elab", "edge_labels")
   matrixServer("ov", rv, "ov", "overlay")
@@ -437,6 +450,8 @@ server <- function(input, output, session) {
       phases = keep_rows(rv$phases, "phase"),
       legend_node_colour = keep_rows(rv$legend_colours, "colour"),
       legend_node_shape = keep_rows(rv$legend_shapes, "shape"),
+      link_props = keep_rows(rv$link_props, "from"),
+      legend_linetypes = keep_rows(rv$legend_linetypes, "linetype"),
       settings = rv$settings)
   })
   built <- debounce(reactive({

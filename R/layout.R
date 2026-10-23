@@ -224,6 +224,7 @@
   # timeline styles + link geometry
   cs <- .code_styles(edges$code, spec$edge_props, S)
   edges <- .link_geometry(edges, nd, cs, S, overlay = FALSE)
+  edges <- .apply_link_props(edges, spec$link_props)
   if (nrow(edges) && !is.null(spec$edge_labels))
     edges$text <- .chr(spec$edge_labels[cbind(edges$from, edges$to)], "")
   else edges$text <- rep("", nrow(edges))
@@ -320,5 +321,30 @@
     }
   }, character(1))
   e$mx <- (e$x1 + e$x2) / 2; e$my <- (e$y1 + e$y2) / 2
+  e
+}
+
+# Per-link overrides (link_props): non-blank cells replace the timeline style
+# on matching links; blank weight matches every timeline on the link.
+.apply_link_props <- function(e, lp) {
+  e$link_label <- rep("", nrow(e)); e$link_description <- rep("", nrow(e))
+  if (is.null(lp) || !nrow(lp) || !nrow(e)) return(e)
+  lp <- lp[!is.na(lp$from) & nzchar(trimws(as.character(lp$from))), , drop = FALSE]
+  unmatched <- character(0)
+  for (k in seq_len(nrow(lp))) {
+    w   <- .chr(lp$weight[k], "")
+    hit <- e$from == trimws(as.character(lp$from[k])) & e$to == trimws(as.character(lp$to[k])) &
+           (if (nzchar(w)) e$code == .code_key(w) else TRUE)
+    if (!any(hit)) { unmatched <- c(unmatched, paste0(lp$from[k], "->", lp$to[k])); next }
+    v <- function(col) { x <- lp[[col]][k]; if (is.na(x) || !nzchar(trimws(as.character(x)))) NULL else x }
+    if (!is.null(v("colour")))   e$colour[hit]   <- .hex(v("colour"))
+    if (!is.null(v("alpha")))    e$alpha[hit]    <- .num(v("alpha"), 1)
+    if (!is.null(v("width")))    e$width[hit]    <- .num(v("width"), 1)
+    if (!is.null(v("linetype"))) e$linetype[hit] <- as.character(v("linetype"))
+    if (!is.null(v("label")))    e$link_label[hit] <- as.character(v("label"))
+    if (!is.null(v("description"))) e$link_description[hit] <- as.character(v("description"))
+  }
+  if (length(unmatched))
+    warning("link_props rows match no link: ", paste(unmatched, collapse = ", "), call. = FALSE)
   e
 }

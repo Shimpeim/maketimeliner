@@ -201,3 +201,54 @@ test_that("unembeddable pictures keep the URL and warn with a reason", {
   expect_warning(timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
                                      image_max_mb = 0.001), "exceeds image_max_mb")
 })
+
+test_that("link_props override style on single links and feed tooltip + legend", {
+  m <- mini()
+  lp <- data.frame(from = "a", to = "b", weight = "", linetype = "2,4", width = 5,
+                   label = "State", description = "Actor: the state (interpretation)")
+  lt <- data.frame(linetype = "2,4", label = "State")
+  out <- timeline_to_outputs(m$adj, m$nodes, link_props = lp, legend_linetypes = lt,
+                             html_file = NULL, svg_file = NULL, embed_images = FALSE)
+  e <- out$layout$edges
+  expect_match(out$svg, "stroke-width=\"5\"[^>]*stroke-dasharray=\"2,4\"[^>]*><title>1 — State</title>")
+  expect_match(out$svg, ">Line types<", fixed = TRUE)
+  d <- html_data(out$html)
+  ab <- Filter(function(x) x$from == "a", d$edges)[[1]]
+  expect_equal(ab$link_label, "State")
+  expect_equal(ab$link_description, "Actor: the state (interpretation)")
+  other <- Filter(function(x) x$from == "b", d$edges)
+  expect_true(all(vapply(other, function(x) x$link_label == "", logical(1))))
+})
+
+test_that("link_props weight restricts the override to one timeline; unmatched rows warn", {
+  m <- mini(); m$adj["a", "b"] <- "1;2"
+  lp <- data.frame(from = "a", to = "b", weight = 2, colour = "#00FF00")
+  out <- timeline_to_outputs(m$adj, m$nodes, link_props = lp, html_file = NULL, svg_file = NULL)
+  e <- out$layout$edges[out$layout$edges$from == "a", ]
+  expect_equal(e$colour[e$code == "2"], "#00FF00")
+  expect_false(e$colour[e$code == "1"] == "#00FF00")
+  expect_warning(timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
+                                     link_props = data.frame(from = "c", to = "a", linetype = "dashed")),
+                 "match no link")
+})
+
+test_that("link_props and legend_linetypes survive the CSV round trip", {
+  m <- mini()
+  sp <- timeline_spec(m$adj, m$nodes,
+                      link_props = data.frame(from = "a", to = "b", linetype = "dotted", label = "X"),
+                      legend_linetypes = data.frame(linetype = "dotted", label = "X"))
+  d <- tempfile(); write_timeline_csvs(sp, d, "lp")
+  expect_true(file.exists(file.path(d, "lp_link_props.csv")))
+  sp2 <- read_timeline_csvs(d)
+  expect_equal(sp2$link_props$label, "X")
+  expect_identical(render_timeline(sp, NULL, NULL)$svg, render_timeline(sp2, NULL, NULL)$svg)
+})
+
+test_that("legend line-type samples use round caps so dot patterns are visible (#12)", {
+  m <- mini()
+  out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
+                             legend_linetypes = data.frame(linetype = "0.1,5", label = "dots"))
+  leg <- regmatches(out$svg, regexpr("<line [^>]*stroke-dasharray=\"0.1,5\"[^>]*/>", out$svg))
+  expect_length(leg, 1)
+  expect_match(leg, "stroke-linecap=\"round\"", fixed = TRUE)
+})
