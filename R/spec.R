@@ -2,7 +2,8 @@
 .table_cols <- list(
   node_props = c("id", "label", "time", "stream", "slot", "shape", "colour",
                  "alpha", "stroke", "stroke_width", "linetype", "fontcolour",
-                 "fontsize", "width", "height", "label_position", "description"),
+                 "fontsize", "width", "height", "label_position", "image",
+                 "description"),
   streams    = c("id", "label", "order", "colour", "alpha", "stroke",
                  "stroke_width", "linetype", "height", "fontcolour", "description"),
   edge_props = c("weight", "label", "colour", "alpha", "width", "linetype",
@@ -80,7 +81,8 @@
 #'   Optional: `label`, `slot` (0-1 vertical position inside the stream; blank =
 #'   automatic), `shape`, `colour`, `alpha`, `stroke`, `stroke_width`,
 #'   `linetype`, `fontcolour`, `fontsize`, `width`, `height`, `label_position`,
-#'   `description` (shown in the HTML info panel). `color`/`fontcolor` accepted.
+#'   `image` (picture URL shown on mouse-over in the HTML), `description`
+#'   (shown in the HTML info panel). `color`/`fontcolor` accepted.
 #' @param streams data.frame of streams (lanes): `id`, `label`, `order`,
 #'   `colour`, `alpha`, `stroke`, `stroke_width`, `linetype`, `height`,
 #'   `fontcolour`, `description`. Any number of streams. `NULL` = derived from

@@ -29,7 +29,8 @@ of the timeline(s) running from event \code{i} to event \code{j}.}
 Optional: \code{label}, \code{slot} (0-1 vertical position inside the stream; blank =
 automatic), \code{shape}, \code{colour}, \code{alpha}, \code{stroke}, \code{stroke_width},
 \code{linetype}, \code{fontcolour}, \code{fontsize}, \code{width}, \code{height}, \code{label_position},
-\code{description} (shown in the HTML info panel). \code{color}/\code{fontcolor} accepted.}
+\code{image} (picture URL shown on mouse-over in the HTML), \code{description}
+(shown in the HTML info panel). \code{color}/\code{fontcolor} accepted.}
 
 \item{streams}{data.frame of streams (lanes): \code{id}, \code{label}, \code{order},
 \code{colour}, \code{alpha}, \code{stroke}, \code{stroke_width}, \code{linetype}, \code{height},

@@ -18,7 +18,7 @@ devtools::install("path/to/00_utilities_R/maketimeliner")
 
 | Table (CSV suffix) | Role | Key columns |
 |---|---|---|
-| `_node_props.csv` | events | **id, time, stream**, label, slot, shape, colour, alpha, stroke, stroke_width, linetype, fontcolour, fontsize, width, height, label_position, description |
+| `_node_props.csv` | events | **id, time, stream**, label, slot, shape, colour, alpha, stroke, stroke_width, linetype, fontcolour, fontsize, width, height, label_position, **image** (picture URL), description |
 | `_adj.csv` | links between events | matrix; cell = **timeline code(s)**, e.g. `1` or `1;3` |
 | `_edge_props.csv` | one row per timeline | **weight** (= code), label, colour, alpha, width, linetype, description |
 | `_edge_labels.csv` | text on links | matrix |
@@ -49,7 +49,7 @@ run_app()                                             # Shiny editor
 
 ## Interactive HTML
 
-Hover a timeline to highlight it; click to pin it (you can pin several); toggle
+Hover an event to see its details and its **picture** (the `image` URL column; http(s), relative paths or `data:image/…`; size via `tooltip_image_width`). Hover a timeline to highlight it; click to pin it (you can pin several); toggle
 timelines on and off; dim streams; search events; click an event, timeline,
 stream or window to open the details panel (sequence, stream crossings, events
 inside a window); zoom with the scroll wheel; drag to pan; download the SVG.

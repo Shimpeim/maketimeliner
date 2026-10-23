@@ -147,3 +147,29 @@ test_that("HTML data JSON is valid and script-safe", {
   expect_length(d$nodes, 4)
   expect_length(d$timelines, 2)
 })
+
+html_data <- function(html) {
+  js <- regmatches(html, regexpr("const D = .*?;\n", html))
+  jsonlite::fromJSON(sub(";\n$", "", sub("^const D = ", "", js)), simplifyVector = FALSE)
+}
+
+test_that("node image URLs reach the HTML data; unsafe schemes are dropped", {
+  m <- mini()
+  m$nodes$image <- c("https://example.org/a.png", "img/b.jpg",
+                     "javascript:alert(1)", NA)
+  expect_warning(out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL,
+                                            svg_file = NULL, tooltip_image_width = 300),
+                 "unsupported image")
+  d <- html_data(out$html)
+  imgs <- vapply(d$nodes, function(n) n$image, character(1))
+  expect_equal(imgs, c("https://example.org/a.png", "img/b.jpg", "", ""))
+  expect_equal(d$image_width, 300)
+  expect_match(out$html, "imgTag(n.image)", fixed = TRUE)
+})
+
+test_that("image column survives the CSV round trip", {
+  spec <- kingdon_example()
+  spec$nodes$image[1] <- "https://example.org/x.png"
+  d <- tempfile(); write_timeline_csvs(spec, d, "img")
+  expect_equal(read_timeline_csvs(d)$nodes$image[1], "https://example.org/x.png")
+})

@@ -45,7 +45,9 @@ button:hover{background:#eee}
 .seq .cur{font-weight:700}
 .empty{color:#bbb;font-style:italic;font-size:12px}
 /* tooltip */
-#tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:12px;padding:6px 9px;border-radius:5px;max-width:320px;line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
+#tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:12px;padding:6px 9px;border-radius:5px;max-width:360px;line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
+#tt img{display:block;margin-top:6px;border-radius:3px;background:#fff;max-height:60vh;object-fit:contain}
+#ip img.pic{display:block;max-width:100%;margin:6px 0 4px;border-radius:4px;border:1px solid #eee}
 /* highlight states */
 svg .dim{opacity:.1;transition:opacity .15s}
 svg .hid{display:none}
@@ -169,7 +171,7 @@ function bindChips(){ ip.querySelectorAll('.chip').forEach(ch => ch.onclick = ()
 function kv(k, v){ return v ? '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' : ''; }
 function showNode(id, centre){
   const n = ND[id]; if (!n) return;
-  let h = '<h3>' + esc(n.label) + '</h3>' + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
+  let h = '<h3>' + esc(n.label) + '</h3>' + imgTag(n.image, 'pic') + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
   if (n.codes.length) {
     h += '<div class="k">Timelines through this event</div><div class="v">' + n.codes.map(chip).join('') + '</div>';
     n.codes.forEach(c => { const t = TL[c];
@@ -206,14 +208,23 @@ function showWindow(k){
 }
 
 /* ── SVG interaction ── */
-const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block';
-  tt.style.left = Math.min(ev.clientX + 14, window.innerWidth - 330) + 'px'; tt.style.top = (ev.clientY + 14) + 'px'; };
+let lastEv = null;
+const placeTT = (ev) => { if (ev) lastEv = ev; if (!lastEv) return;
+  const w = tt.offsetWidth, h = tt.offsetHeight;
+  let x = lastEv.clientX + 14, y = lastEv.clientY + 14;
+  if (x + w > window.innerWidth - 4) x = Math.max(4, lastEv.clientX - w - 14);
+  if (y + h > window.innerHeight - 4) y = Math.max(4, window.innerHeight - h - 4);
+  tt.style.left = x + 'px'; tt.style.top = y + 'px'; };
+const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block'; placeTT(ev);
+  tt.querySelectorAll('img').forEach(im => { im.onload = () => placeTT();
+    im.onerror = () => { im.replaceWith(Object.assign(document.createElement('div'), {textContent: '[image not available]', style: 'color:#f99;font-size:11px;margin-top:4px'})); placeTT(); }; }); };
+const imgTag = (src, cls) => src ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + esc(src) + '" alt="" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
 const hideTT = () => { tt.style.display = 'none'; };
 q('.tl-edge').forEach(el => {
   const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
   el.addEventListener('mouseenter', ev => { hover = c; apply();
     showTT(ev, '<b>' + esc(t.label) + '</b>\n' + esc(ND[e.from].label) + ' → ' + esc(ND[e.to].label) + (e.text ? '\n' + esc(e.text) : '') + (t.description ? '\n' + esc(t.description) : '')); });
-  el.addEventListener('mousemove', ev => { tt.style.left = Math.min(ev.clientX + 14, window.innerWidth - 330) + 'px'; tt.style.top = (ev.clientY + 14) + 'px'; });
+  el.addEventListener('mousemove', placeTT);
   el.addEventListener('mouseleave', () => { hover = null; apply(); hideTT(); });
   el.addEventListener('click', ev => { if (moved) return; togglePin(c); showTimeline(c); });
 });
@@ -225,7 +236,8 @@ q('.tl-label, .tl-legend-item[data-tl]').forEach(el => {
 });
 q('.tl-node').forEach(el => {
   const id = el.getAttribute('data-id'), n = ND[id];
-  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n.label) + '</b>\n' + esc(n.time_label) + ' · ' + esc((ST[n.stream]||{}).label || n.stream) + (n.description ? '\n' + esc(n.description) : '')));
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n.label) + '</b>\n' + esc(n.time_label) + ' · ' + esc((ST[n.stream]||{}).label || n.stream) + (n.description ? '\n' + esc(n.description) : '') + imgTag(n.image)));
+  el.addEventListener('mousemove', placeTT);
   el.addEventListener('mouseleave', hideTT);
   el.addEventListener('click', () => { if (!moved) showNode(id, false); });
 });

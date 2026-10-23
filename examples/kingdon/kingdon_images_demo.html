@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multiple Streams: an illustrative case</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;display:flex;height:100vh;overflow:hidden;background:#f2f2f4;color:#222}
+/* sidebar */
+#sb{width:240px;flex-shrink:0;padding:13px 11px;overflow-y:auto;background:#f8f8fa;border-right:1px solid #ddd;font-size:13px}
+#sb h2{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px;line-height:1.3}
+.meta{font-size:10px;color:#aaa;margin-bottom:12px;line-height:1.55}
+.c{margin-bottom:13px}
+.c>b{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#999;margin-bottom:4px}
+.c input[type=text]{width:100%;font-size:12px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;background:#fff}
+.row{display:flex;align-items:center;gap:6px;padding:3px 4px;border-radius:4px;cursor:pointer;font-size:12px;user-select:none}
+.row:hover{background:#ececf2}
+.row.pin{background:#e3e6f5;font-weight:600}
+.row input{cursor:pointer;margin:0}
+.sw{width:18px;height:4px;border-radius:2px;flex-shrink:0}
+.sq{width:11px;height:11px;border-radius:2px;flex-shrink:0;border:1px solid #ccc}
+.lab{flex:1;line-height:1.25}
+.btns{display:flex;flex-wrap:wrap;gap:4px}
+button{font-size:11px;padding:3px 8px;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer;color:#444;font-family:inherit}
+button:hover{background:#eee}
+.mini{font-size:10px;color:#888;cursor:pointer;margin-left:6px;font-weight:400;letter-spacing:0;text-transform:none}
+.mini:hover{text-decoration:underline}
+/* main */
+#main{display:flex;flex:1;min-width:0}
+#gp{flex:1;min-width:0;background:#fff;position:relative;overflow:hidden;cursor:grab}
+#gp.drag{cursor:grabbing}
+#gp>svg{width:100%;height:100%;display:block}
+#zoomhint{position:absolute;right:10px;bottom:8px;font-size:10px;color:#bbb;pointer-events:none}
+/* info panel */
+#ip{width:30%;min-width:220px;max-width:420px;background:#fff;border-left:1px solid #e8e8e8;overflow-y:auto;padding:15px 13px;font-size:13px}
+#ip h3{font-size:13px;font-weight:700;color:#1a1a2e;margin:0 0 6px;border-bottom:1px solid #f0f0f0;padding-bottom:4px}
+#ip .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-top:9px}
+#ip .v{margin-top:2px;line-height:1.5;white-space:pre-wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:2px 9px;margin:2px 3px 2px 0;font-size:11px;background:#f3f3f6;cursor:pointer}
+.chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.seq{margin:4px 0 0 4px;border-left:2px solid #eee;padding-left:8px}
+.seq div{padding:2px 0;cursor:pointer;font-size:12px}
+.seq div:hover{text-decoration:underline}
+.seq .cur{font-weight:700}
+.empty{color:#bbb;font-style:italic;font-size:12px}
+/* tooltip */
+#tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:12px;padding:6px 9px;border-radius:5px;max-width:360px;line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
+#tt img{display:block;margin-top:6px;border-radius:3px;background:#fff;max-height:60vh;object-fit:contain}
+#ip img.pic{display:block;max-width:100%;margin:6px 0 4px;border-radius:4px;border:1px solid #eee}
+/* highlight states */
+svg .dim{opacity:.1;transition:opacity .15s}
+svg .hid{display:none}
+svg .tl-edge,svg .tl-node,svg .tl-label,svg .tl-overlay,svg .tl-nlabel,svg .tl-elabel{transition:opacity .15s}
+svg .tl-node{cursor:pointer}
+svg .tl-edge{cursor:pointer}
+svg .tl-node.hit circle,svg .tl-node.hit rect,svg .tl-node.hit ellipse,svg .tl-node.hit polygon{stroke:#d00 !important;stroke-width:3px !important}
+@media (max-width:760px){body{flex-direction:column;height:auto;overflow:auto}#sb{width:100%}#main{flex-direction:column}#gp{height:70vh}#ip{width:100%;max-width:none}}
+</style>
+</head>
+<body>
+<div id="sb">
+  <h2>Multiple Streams: an illustrative case</h2>
+  <div class="meta">Generated: 2026-10-23 19:28 · maketimeliner 0.1.0</div>
+  <div class="c"><b>Find event</b><input type="text" id="q" placeholder="label, time, description…"></div>
+  <div class="c"><b>Timelines <span class="mini" id="allTl">all</span><span class="mini" id="noneTl">none</span></b><div id="tlList"></div></div>
+  <div class="c"><b>Streams</b><div id="stList"></div></div>
+  <div class="c"><b>View</b><div class="btns">
+    <button id="bReset">Reset view</button><button id="bClear">Clear highlight</button>
+    <button id="bSvg">Download SVG</button></div></div>
+  <div class="c" style="font-size:11px;color:#999;line-height:1.5">Hover a timeline to highlight it; click to pin (several can be pinned). Click an event for details. Scroll to zoom, drag to pan.</div>
+</div>
+<div id="main">
+  <div id="gp"><svg xmlns="http://www.w3.org/2000/svg" id="tl-svg" width="1315.5" height="819" viewBox="0 0 1315.5 819" font-family="system-ui, -apple-system, &#39;Segoe UI&#39;, Helvetica, Arial, sans-serif">
+<rect class="tl-bg" x="0" y="0" width="1315.5" height="819" fill="#FFFFFF"/>
+<text font-size="18" fill="#1a1a2e" text-anchor="start" font-weight="bold" class="tl-title"><tspan x="30" y="46">Multiple Streams: an illustrative case</tspan></text>
+<g class="tl-streams">
+<g class="tl-stream" data-stream="problem">
+<rect x="30" y="66" width="1090" height="150" fill="#FBEDE7" stroke="#DDDDDD" stroke-width="1"/>
+<text font-size="13" fill="#333333" text-anchor="start" font-weight="bold" class="tl-slabel"><tspan x="40" y="137.75">Problem</tspan><tspan x="40" y="153.35">stream</tspan></text>
+</g>
+<g class="tl-stream" data-stream="policy">
+<rect x="30" y="222" width="1090" height="150" fill="#E7F0FA" stroke="#DDDDDD" stroke-width="1"/>
+<text font-size="13" fill="#333333" text-anchor="start" font-weight="bold" class="tl-slabel"><tspan x="40" y="293.75">Policy</tspan><tspan x="40" y="309.35">stream</tspan></text>
+</g>
+<g class="tl-stream" data-stream="politics">
+<rect x="30" y="378" width="1090" height="150" fill="#F3E9F5" stroke="#DDDDDD" stroke-width="1"/>
+<text font-size="13" fill="#333333" text-anchor="start" font-weight="bold" class="tl-slabel"><tspan x="40" y="449.75">Politics</tspan><tspan x="40" y="465.35">stream</tspan></text>
+</g>
+</g>
+<g class="tl-axis">
+<line x1="186.89" y1="66" x2="186.89" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="186.89" y1="532" x2="186.89" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="186.89" y="550">2000</tspan></text>
+<line x1="283.26" y1="66" x2="283.26" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="283.26" y1="532" x2="283.26" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="283.26" y="550">2001</tspan></text>
+<line x1="379.62" y1="66" x2="379.62" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="379.62" y1="532" x2="379.62" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="379.62" y="550">2002</tspan></text>
+<line x1="475.99" y1="66" x2="475.99" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="475.99" y1="532" x2="475.99" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="475.99" y="550">2003</tspan></text>
+<line x1="572.36" y1="66" x2="572.36" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="572.36" y1="532" x2="572.36" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="572.36" y="550">2004</tspan></text>
+<line x1="668.73" y1="66" x2="668.73" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="668.73" y1="532" x2="668.73" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="668.73" y="550">2005</tspan></text>
+<line x1="765.1" y1="66" x2="765.1" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="765.1" y1="532" x2="765.1" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="765.1" y="550">2006</tspan></text>
+<line x1="861.47" y1="66" x2="861.47" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="861.47" y1="532" x2="861.47" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="861.47" y="550">2007</tspan></text>
+<line x1="957.83" y1="66" x2="957.83" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="957.83" y1="532" x2="957.83" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="957.83" y="550">2008</tspan></text>
+<line x1="1054.2" y1="66" x2="1054.2" y2="528" stroke="#000" stroke-opacity="0.07"/>
+<line x1="1054.2" y1="532" x2="1054.2" y2="537" stroke="#666"/>
+<text font-size="10.5" fill="#555555" text-anchor="middle" font-weight="normal"><tspan x="1054.2" y="550">2009</tspan></text>
+<line x1="160" y1="532" x2="1110" y2="532" stroke="#666"/>
+<text font-size="11" fill="#333333" text-anchor="middle" font-weight="normal"><tspan x="635" y="566">Year</tspan></text>
+</g>
+<g class="tl-windows">
+<g class="tl-window" data-win="1">
+<rect x="928.92" y="66" width="154.19" height="462" fill="#F4C430" fill-opacity="0.2" stroke="#C89B00" stroke-width="1" stroke-dasharray="6,4"/>
+<text font-size="10.5" fill="#C89B00" text-anchor="middle" font-weight="bold"><tspan x="1006.02" y="79">Policy window</tspan></text>
+<title>Policy window: Problems, policies and politics converge; the entrepreneur couples the streams.</title>
+</g>
+</g>
+<g class="tl-overlays" fill="none">
+<path class="tl-overlay" data-ov="1" data-from="e08" data-to="p08" d="M957.83 453 Q1042.08 284.50 957.83 116" fill="none" stroke="#009E73" stroke-width="1.4" stroke-opacity="0.8" stroke-dasharray="6,4"><title>Coupling by entrepreneur</title></path>
+<text font-size="10" fill="#009E73" text-anchor="middle" font-weight="normal" class="tl-ovlabel"><tspan x="999.96" y="280.5">couples</tspan></text>
+<path class="tl-overlay" data-ov="1" data-from="e08" data-to="s07" d="M957.83 453 Q954.90 338.41 861.47 272" fill="none" stroke="#009E73" stroke-width="1.4" stroke-opacity="0.8" stroke-dasharray="6,4"><title>Coupling by entrepreneur</title></path>
+</g>
+<g class="tl-edges" fill="none" stroke-linecap="round">
+<path class="tl-edge" id="tl-e1" data-tl="1" data-from="p00" data-to="p03" d="M186.89 116 L475.99 116" fill="none" stroke="#D55E00" stroke-width="4" stroke-opacity="0.9"><title>Issue: treatment costs</title></path>
+<path class="tl-edge" id="tl-e2" data-tl="1" data-from="p03" data-to="p06" d="M475.99 116 L765.1 116" fill="none" stroke="#D55E00" stroke-width="4" stroke-opacity="0.9"><title>Issue: treatment costs</title></path>
+<path class="tl-edge" id="tl-e3" data-tl="1" data-from="p06" data-to="p08" d="M765.1 116 L957.83 116" fill="none" stroke="#D55E00" stroke-width="4" stroke-opacity="0.9"><title>Issue: treatment costs</title></path>
+<path class="tl-edge" id="tl-e4" data-tl="1" data-from="p08" data-to="s09" d="M957.83 116 C1006.02 116 1006.02 272 1054.2 272" fill="none" stroke="#D55E00" stroke-width="4" stroke-opacity="0.9"><title>Issue: treatment costs</title></path>
+<path class="tl-edge" id="tl-e5" data-tl="2" data-from="s01" data-to="s04" d="M283.26 272 L572.36 272" fill="none" stroke="#0072B2" stroke-width="4" stroke-opacity="0.9"><title>Proposal: coverage scheme</title></path>
+<path class="tl-edge" id="tl-e6" data-tl="2" data-from="s04" data-to="s07" d="M572.36 272 L861.47 272" fill="none" stroke="#0072B2" stroke-width="4" stroke-opacity="0.9"><title>Proposal: coverage scheme</title></path>
+<path class="tl-edge" id="tl-e7" data-tl="2" data-from="s07" data-to="s09" d="M861.47 272 L1054.2 272" fill="none" stroke="#0072B2" stroke-width="4" stroke-opacity="0.9"><title>Proposal: coverage scheme</title></path>
+<path class="tl-edge" id="tl-e8" data-tl="3" data-from="e02" data-to="e05" d="M379.62 322 C524.18 322 524.18 166 668.73 166" fill="none" stroke="#009E73" stroke-width="3" stroke-opacity="0.95"><title>Policy entrepreneur</title></path>
+<path class="tl-edge" id="tl-e9" data-tl="3" data-from="e05" data-to="e08" d="M668.73 166 C813.28 166 813.28 453 957.83 453" fill="none" stroke="#009E73" stroke-width="3" stroke-opacity="0.95"><title>Policy entrepreneur</title></path>
+<path class="tl-edge" id="tl-e10" data-tl="3" data-from="e08" data-to="s09" d="M957.83 449.5 C1006.02 449.5 1006.02 268.5 1054.2 268.5" fill="none" stroke="#009E73" stroke-width="3" stroke-opacity="0.95"><title>Policy entrepreneur</title></path>
+<path class="tl-edge" id="tl-e11" data-tl="4" data-from="e08" data-to="s09" d="M957.83 456.5 C1006.02 456.5 1006.02 275.5 1054.2 275.5" fill="none" stroke="#CC79A7" stroke-width="3" stroke-opacity="0.8" stroke-dasharray="18,6"><title>National mood</title></path>
+<path class="tl-edge" id="tl-e12" data-tl="4" data-from="m01" data-to="m04" d="M283.26 453 L572.36 453" fill="none" stroke="#CC79A7" stroke-width="3" stroke-opacity="0.8" stroke-dasharray="18,6"><title>National mood</title></path>
+<path class="tl-edge" id="tl-e13" data-tl="4" data-from="m04" data-to="m07" d="M572.36 453 L861.47 453" fill="none" stroke="#CC79A7" stroke-width="3" stroke-opacity="0.8" stroke-dasharray="18,6"><title>National mood</title></path>
+<path class="tl-edge" id="tl-e14" data-tl="4" data-from="m07" data-to="e08" d="M861.47 453 L957.83 453" fill="none" stroke="#CC79A7" stroke-width="3" stroke-opacity="0.8" stroke-dasharray="18,6"><title>National mood</title></path>
+</g>
+<g class="tl-nodes">
+<g class="tl-node" data-id="p00" data-stream="problem">
+<circle cx="186.89" cy="116" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="p00"><tspan x="186.89" y="90.8">Cost indicators</tspan><tspan x="186.89" y="104">published</tspan></text>
+<title>Cost indicators published (2000)</title>
+</g>
+<g class="tl-node" data-id="p03" data-stream="problem">
+<polygon points="475.99,108 483.99,116 475.99,124 467.99,116" fill="#FDE2E2" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="p03"><tspan x="475.99" y="89.8">Focusing event:</tspan><tspan x="475.99" y="103">hospital crisis</tspan></text>
+<title>Focusing event: hospital crisis (2003)</title>
+</g>
+<g class="tl-node" data-id="p06" data-stream="problem">
+<circle cx="765.1" cy="116" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="p06"><tspan x="765.1" y="90.8">Programme</tspan><tspan x="765.1" y="104">evaluation</tspan></text>
+<title>Programme evaluation (2006)</title>
+</g>
+<g class="tl-node" data-id="p08" data-stream="problem">
+<circle cx="957.83" cy="116" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="p08"><tspan x="957.83" y="90.8">Media agenda</tspan><tspan x="957.83" y="104">peaks</tspan></text>
+<title>Media agenda peaks (2008)</title>
+</g>
+<g class="tl-node" data-id="s01" data-stream="policy">
+<circle cx="283.26" cy="272" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="s01"><tspan x="283.26" y="246.8">Think-tank</tspan><tspan x="283.26" y="260">idea</tspan></text>
+<title>Think-tank idea (2001)</title>
+</g>
+<g class="tl-node" data-id="s04" data-stream="policy">
+<circle cx="572.36" cy="272" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="s04"><tspan x="572.36" y="260">Softening up</tspan></text>
+<title>Softening up (2004)</title>
+</g>
+<g class="tl-node" data-id="s07" data-stream="policy">
+<circle cx="861.47" cy="272" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="s07"><tspan x="861.47" y="246.8">Feasibility</tspan><tspan x="861.47" y="260">study</tspan></text>
+<title>Feasibility study (2007)</title>
+</g>
+<g class="tl-node" data-id="s09" data-stream="policy">
+<rect x="1041.2" y="263" width="26" height="18" rx="4.5" fill="#FFF4C2" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="s09"><tspan x="1054.2" y="294">Bill adopted</tspan></text>
+<title>Bill adopted (2009)</title>
+</g>
+<g class="tl-node" data-id="e02" data-stream="policy">
+<polygon points="379.62,314.5 387.12,329.5 372.12,329.5" fill="#E8F0FE" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="e02"><tspan x="379.62" y="296.3">Drafts</tspan><tspan x="379.62" y="309.5">proposal</tspan></text>
+<title>Drafts proposal (2002)</title>
+</g>
+<g class="tl-node" data-id="e05" data-stream="problem">
+<polygon points="668.73,158.5 676.23,173.5 661.23,173.5" fill="#E8F0FE" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="e05"><tspan x="668.73" y="140.3">Frames the</tspan><tspan x="668.73" y="153.5">crisis</tspan></text>
+<title>Frames the crisis (2005)</title>
+</g>
+<g class="tl-node" data-id="e08" data-stream="politics">
+<polygon points="957.83,445.5 965.33,460.5 950.33,460.5" fill="#E8F0FE" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="e08"><tspan x="957.83" y="427.3">Lobbies new</tspan><tspan x="957.83" y="440.5">government</tspan></text>
+<title>Lobbies new government (2008)</title>
+</g>
+<g class="tl-node" data-id="m01" data-stream="politics">
+<circle cx="283.26" cy="453" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="m01"><tspan x="283.26" y="427.8">Public mood</tspan><tspan x="283.26" y="441">shifts</tspan></text>
+<title>Public mood shifts (2001)</title>
+</g>
+<g class="tl-node" data-id="m04" data-stream="politics">
+<circle cx="572.36" cy="453" r="7" fill="#FFFFFF" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="m04"><tspan x="572.36" y="427.8">Interest-group</tspan><tspan x="572.36" y="441">campaign</tspan></text>
+<title>Interest-group campaign (2004)</title>
+</g>
+<g class="tl-node" data-id="m07" data-stream="politics">
+<polygon points="861.47,445 869.47,453 861.47,461 853.47,453" fill="#FDE2E2" stroke="#333333" stroke-width="1.5"/>
+<text font-size="11" fill="#222222" text-anchor="middle" font-weight="normal" class="tl-nlabel" data-id="m07"><tspan x="861.47" y="426.8">Election:</tspan><tspan x="861.47" y="440">turnover</tspan></text>
+<title>Election: turnover (2007)</title>
+</g>
+</g>
+<g class="tl-labels">
+<text font-size="11" fill="#009E73" text-anchor="start" font-weight="bold" class="tl-label" data-tl="3"><tspan x="1073.2" y="255.22">Policy entrepreneur</tspan></text>
+<text font-size="11" fill="#D55E00" text-anchor="start" font-weight="bold" class="tl-label" data-tl="1"><tspan x="1073.2" y="268.98">Issue: treatment costs</tspan></text>
+<text font-size="11" fill="#0072B2" text-anchor="start" font-weight="bold" class="tl-label" data-tl="2"><tspan x="1073.2" y="282.72">Proposal: coverage scheme</tspan></text>
+<text font-size="11" fill="#CC79A7" text-anchor="start" font-weight="bold" class="tl-label" data-tl="4"><tspan x="1073.2" y="296.48">National mood</tspan></text>
+</g>
+<g class="tl-legend">
+<text font-size="12" fill="#333333" text-anchor="start" font-weight="bold"><tspan x="30" y="598">Legend</tspan></text>
+<text font-size="10.5" fill="#777777" text-anchor="start" font-weight="normal" class="tl-legend-sec"><tspan x="30" y="622">Timelines</tspan></text>
+<g class="tl-legend-item" data-tl="1"><line x1="32" y1="636" x2="54" y2="636" stroke-linecap="round" stroke="#D55E00" stroke-width="4" stroke-opacity="0.9"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="60" y="640">Issue: treatment costs</tspan></text></g>
+<g class="tl-legend-item" data-tl="2"><line x1="220.36" y1="636" x2="242.36" y2="636" stroke-linecap="round" stroke="#0072B2" stroke-width="4" stroke-opacity="0.9"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="248.36" y="640">Proposal: coverage scheme</tspan></text></g>
+<g class="tl-legend-item" data-tl="3"><line x1="427.86" y1="636" x2="449.86" y2="636" stroke-linecap="round" stroke="#009E73" stroke-width="3" stroke-opacity="0.95"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="455.86" y="640">Policy entrepreneur</tspan></text></g>
+<g class="tl-legend-item" data-tl="4"><line x1="597.08" y1="636" x2="619.08" y2="636" stroke-linecap="round" stroke="#CC79A7" stroke-width="3" stroke-opacity="0.8" stroke-dasharray="18,6"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="625.08" y="640">National mood</tspan></text></g>
+<text font-size="10.5" fill="#777777" text-anchor="start" font-weight="normal" class="tl-legend-sec"><tspan x="30" y="670">Links</tspan></text>
+<g class="tl-legend-item"><line x1="32" y1="684" x2="54" y2="684" stroke-linecap="round" stroke="#009E73" stroke-width="1.4" stroke-opacity="0.8" stroke-dasharray="6,4"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="60" y="688">Coupling by entrepreneur</tspan></text></g>
+<text font-size="10.5" fill="#777777" text-anchor="start" font-weight="normal" class="tl-legend-sec"><tspan x="30" y="718">Windows</tspan></text>
+<g class="tl-legend-item"><rect x="32" y="726" width="20" height="12" fill="#F4C430" fill-opacity="0.25" stroke="#C89B00" stroke-width="1" stroke-dasharray="6,4"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="60" y="736">Policy window</tspan></text></g>
+<text font-size="10.5" fill="#777777" text-anchor="start" font-weight="normal" class="tl-legend-sec"><tspan x="30" y="766">Event shapes</tspan></text>
+<g class="tl-legend-item"><polygon points="42,773 49,780 42,787 35,780" fill="#FFFFFF" stroke="#333333" stroke-width="1.4"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="60" y="784">Focusing / political event</tspan></text></g>
+<g class="tl-legend-item"><polygon points="255.88,773 262.88,787 248.88,787" fill="#FFFFFF" stroke="#333333" stroke-width="1.4"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="273.88" y="784">Entrepreneur action</tspan></text></g>
+<g class="tl-legend-item"><rect x="418.1" y="773" width="14" height="14" rx="3.5" fill="#FFFFFF" stroke="#333333" stroke-width="1.4"/><text font-size="11" fill="#333333" text-anchor="start" font-weight="normal"><tspan x="443.1" y="784">Decision</tspan></text></g>
+</g>
+</svg><div id="zoomhint">scroll = zoom · drag = pan</div></div>
+  <div id="ip"><h3>Details</h3><div class="empty">Click an event, a timeline or a window.</div></div>
+</div>
+<div id="tt"></div>
+<script>
+const D = {"title":"Multiple Streams: an illustrative case","image_width":240,"timelines":[{"code":"1","label":"Issue: treatment costs","colour":"#D55E00","description":"Condition defined as a public problem.","nodes":["p00","p03","p06","p08","s09"]},{"code":"2","label":"Proposal: coverage scheme","colour":"#0072B2","description":"Policy alternative developed in the policy community.","nodes":["s01","s04","s07","s09"]},{"code":"3","label":"Policy entrepreneur","colour":"#009E73","description":"Actor who couples problems, policies and politics.","nodes":["e02","e05","e08","s09"]},{"code":"4","label":"National mood","colour":"#CC79A7","description":"Politics stream: mood, interest groups, government.","nodes":["m01","m04","m07","e08","s09"]}],"nodes":[{"id":"p00","label":"Cost indicators published","t":2000,"time_label":"2000","stream":"problem","description":"Routine indicators show treatment costs rising faster than inflation.","image":"","codes":["1"]},{"id":"p03","label":"Focusing event: hospital crisis","t":2003,"time_label":"2003","stream":"problem","description":"A highly visible crisis draws attention to the problem (focusing event).","image":"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22240%22%20height%3D%22140%22%3E%3Crect%20width%3D%22240%22%20height%3D%22140%22%20fill%3D%22%23D55E00%22%2F%3E%3Ctext%20x%3D%22120%22%20y%3D%2278%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20fill%3D%22white%22%20font-family%3D%22sans-serif%22%3EHospital%20crisis%3C%2Ftext%3E%3C%2Fsvg%3E","codes":["1"]},{"id":"p06","label":"Programme evaluation","t":2006,"time_label":"2006","stream":"problem","description":"Feedback from existing programmes confirms the problem.","image":"","codes":["1"]},{"id":"p08","label":"Media agenda peaks","t":2008,"time_label":"2008","stream":"problem","description":"The problem reaches the top of the media agenda.","image":"","codes":["1"]},{"id":"s01","label":"Think-tank idea","t":2001,"time_label":"2001","stream":"policy","description":"An idea floats in the policy primeval soup.","image":"","codes":["2"]},{"id":"s04","label":"Softening up","t":2004,"time_label":"2004","stream":"policy","description":"Policy community discusses and recombines the idea.","image":"","codes":["2"]},{"id":"s07","label":"Feasibility study","t":2007,"time_label":"2007","stream":"policy","description":"Technical feasibility and value acceptability are tested.","image":"","codes":["2"]},{"id":"s09","label":"Bill adopted","t":2009,"time_label":"2009","stream":"policy","description":"Streams are coupled during the policy window; the bill passes.","image":"","codes":["1","2","3","4"]},{"id":"e02","label":"Drafts proposal","t":2002,"time_label":"2002","stream":"policy","description":"The entrepreneur drafts a proposal in advance of a window.","image":"","codes":["3"]},{"id":"e05","label":"Frames the crisis","t":2005,"time_label":"2005","stream":"problem","description":"The entrepreneur attaches the proposal to the problem framing.","image":"","codes":["3"]},{"id":"e08","label":"Lobbies new government","t":2008,"time_label":"2008","stream":"politics","description":"The entrepreneur works the new government's agenda.","image":"","codes":["3","4"]},{"id":"m01","label":"Public mood shifts","t":2001,"time_label":"2001","stream":"politics","description":"National mood begins to favour action.","image":"","codes":["4"]},{"id":"m04","label":"Interest-group campaign","t":2004,"time_label":"2004","stream":"politics","description":"Organised interests campaign on the issue.","image":"","codes":["4"]},{"id":"m07","label":"Election: turnover","t":2007,"time_label":"2007","stream":"politics","description":"A change of government opens the political stream.","image":"data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22240%22%20height%3D%22140%22%3E%3Crect%20width%3D%22240%22%20height%3D%22140%22%20fill%3D%22%23CC79A7%22%2F%3E%3Ctext%20x%3D%22120%22%20y%3D%2278%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20fill%3D%22white%22%20font-family%3D%22sans-serif%22%3EElection%3C%2Ftext%3E%3C%2Fsvg%3E","codes":["4"]}],"edges":[{"code":"1","from":"p00","to":"p03","text":""},{"code":"1","from":"p03","to":"p06","text":""},{"code":"1","from":"p06","to":"p08","text":""},{"code":"1","from":"p08","to":"s09","text":""},{"code":"2","from":"s01","to":"s04","text":""},{"code":"2","from":"s04","to":"s07","text":""},{"code":"2","from":"s07","to":"s09","text":""},{"code":"3","from":"e02","to":"e05","text":""},{"code":"3","from":"e05","to":"e08","text":""},{"code":"3","from":"e08","to":"s09","text":""},{"code":"4","from":"e08","to":"s09","text":""},{"code":"4","from":"m01","to":"m04","text":""},{"code":"4","from":"m04","to":"m07","text":""},{"code":"4","from":"m07","to":"e08","text":""}],"streams":[{"id":"problem","label":"Problem stream","colour":"#FBEDE7","description":"Conditions come to be defined as problems (indicators, focusing events, feedback)."},{"id":"policy","label":"Policy stream","colour":"#E7F0FA","description":"Ideas and alternatives generated and refined by specialists."},{"id":"politics","label":"Politics stream","colour":"#F3E9F5","description":"National mood, organised interests, turnover in government."}],"windows":[{"label":"Policy window","description":"Problems, policies and politics converge; the entrepreneur couples the streams.","period":"2007.7 – 2009.3","t0":2007.7,"t1":2009.3}],"overlays":[{"code":"1","label":"Coupling by entrepreneur","from":"e08","to":"p08","text":"couples"},{"code":"1","label":"Coupling by entrepreneur","from":"e08","to":"s07","text":""}]};
+(function(){
+const gp = document.getElementById('gp'), svg = gp.querySelector('svg');
+const ip = document.getElementById('ip'), tt = document.getElementById('tt');
+svg.querySelectorAll('title').forEach(t => t.remove());   // custom tooltips instead
+const W0 = +svg.getAttribute('width'), H0 = +svg.getAttribute('height');
+svg.removeAttribute('width'); svg.removeAttribute('height');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TL = {}; D.timelines.forEach(t => TL[t.code] = t);
+const ND = {}; D.nodes.forEach(n => ND[n.id] = n);
+const ST = {}; D.streams.forEach(s => ST[s.id] = s);
+const q = (sel) => Array.from(svg.querySelectorAll(sel));
+const attrEq = (a, v) => '[' + a + '="' + CSS.escape(v) + '"]';
+
+/* ── pan / zoom (viewBox) ── */
+let vb = {x:0, y:0, w:W0, h:H0};
+const setVB = () => svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
+function fit(){ vb = {x:0, y:0, w:W0, h:H0}; setVB(); }
+fit();
+const pt = (ev) => { const r = svg.getBoundingClientRect();
+  const s = Math.max(vb.w / r.width, vb.h / r.height);
+  const ox = (r.width * s - vb.w) / 2, oy = (r.height * s - vb.h) / 2;
+  return {x: vb.x - ox + (ev.clientX - r.left) * s, y: vb.y - oy + (ev.clientY - r.top) * s, s: s}; };
+gp.addEventListener('wheel', ev => { ev.preventDefault();
+  const p = pt(ev), k = Math.exp(ev.deltaY * 0.0015);
+  const nw = Math.min(Math.max(vb.w * k, W0 / 20), W0 * 4); const kk = nw / vb.w;
+  vb = {x: p.x - (p.x - vb.x) * kk, y: p.y - (p.y - vb.y) * kk, w: nw, h: vb.h * kk}; setVB(); }, {passive:false});
+let drag = null, moved = false;
+gp.addEventListener('mousedown', ev => { drag = {cx: ev.clientX, cy: ev.clientY, x: vb.x, y: vb.y, s: pt(ev).s}; moved = false; });
+window.addEventListener('mousemove', ev => { if (!drag) return;
+  const dx = ev.clientX - drag.cx, dy = ev.clientY - drag.cy;
+  if (Math.abs(dx) + Math.abs(dy) > 3) { moved = true; gp.classList.add('drag'); }
+  vb.x = drag.x - dx * drag.s; vb.y = drag.y - dy * drag.s; setVB(); });
+window.addEventListener('mouseup', () => { drag = null; gp.classList.remove('drag'); });
+
+/* ── visibility + highlight state ── */
+const hidden = new Set(), pinned = new Set(), dimStreams = new Set();
+let hover = null, hitNodes = new Set();
+function apply(){
+  const focus = new Set(pinned); if (hover != null) focus.add(hover);
+  const any = focus.size > 0;
+  const onNodes = new Set();
+  D.edges.forEach(e => { if (focus.has(e.code)) { onNodes.add(e.from); onNodes.add(e.to); } });
+  q('.tl-edge, .tl-label, .tl-elabel, .tl-legend-item[data-tl]').forEach(el => {
+    const c = el.getAttribute('data-tl');
+    el.classList.toggle('hid', hidden.has(c));
+    el.classList.toggle('dim', any && !focus.has(c));
+  });
+  q('.tl-node').forEach(el => {
+    const id = el.getAttribute('data-id'), n = ND[id];
+    const vis = n.codes.length === 0 || n.codes.some(c => !hidden.has(c));
+    el.classList.toggle('hid', !vis);
+    el.classList.toggle('dim', (any && !onNodes.has(id)) || dimStreams.has(n.stream) || (hitNodes.size > 0 && !hitNodes.has(id)));
+    el.classList.toggle('hit', hitNodes.has(id));
+  });
+  q('.tl-overlay, .tl-ovlabel').forEach(el => el.classList.toggle('dim', any));
+  q('.tl-stream').forEach(el => el.classList.toggle('dim', dimStreams.has(el.getAttribute('data-stream'))));
+  document.querySelectorAll('#tlList .row').forEach(r => {
+    const c = r.dataset.code; r.classList.toggle('pin', pinned.has(c));
+    r.querySelector('input').checked = !hidden.has(c); });
+}
+
+/* ── sidebar lists ── */
+const tlList = document.getElementById('tlList');
+D.timelines.forEach(t => {
+  const r = document.createElement('div'); r.className = 'row'; r.dataset.code = t.code;
+  r.innerHTML = '<input type="checkbox" checked><span class="sw" style="background:' + esc(t.colour) + '"></span><span class="lab">' + esc(t.label) + '</span>';
+  r.querySelector('input').addEventListener('click', ev => { ev.stopPropagation();
+    ev.target.checked ? hidden.delete(t.code) : hidden.add(t.code); apply(); });
+  r.addEventListener('mouseenter', () => { hover = t.code; apply(); });
+  r.addEventListener('mouseleave', () => { hover = null; apply(); });
+  r.addEventListener('click', () => { togglePin(t.code); showTimeline(t.code); });
+  tlList.appendChild(r);
+});
+if (!D.timelines.length) tlList.innerHTML = '<div class="empty">none</div>';
+document.getElementById('allTl').onclick = () => { hidden.clear(); apply(); };
+document.getElementById('noneTl').onclick = () => { D.timelines.forEach(t => hidden.add(t.code)); apply(); };
+const stList = document.getElementById('stList');
+D.streams.forEach(s => {
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = '<input type="checkbox" checked><span class="sq" style="background:' + esc(s.colour) + '"></span><span class="lab">' + esc(s.label) + '</span>';
+  r.querySelector('input').addEventListener('change', ev => {
+    ev.target.checked ? dimStreams.delete(s.id) : dimStreams.add(s.id); apply(); });
+  r.addEventListener('click', ev => { if (ev.target.tagName !== 'INPUT') showStream(s.id); });
+  stList.appendChild(r);
+});
+function togglePin(c){ pinned.has(c) ? pinned.delete(c) : pinned.add(c); apply(); }
+
+/* ── info panel ── */
+const chip = c => { const t = TL[c]; return t ? '<span class="chip" data-c="' + esc(c) + '"><i style="background:' + esc(t.colour) + '"></i>' + esc(t.label) + '</span>' : ''; };
+function bindChips(){ ip.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { togglePin(ch.dataset.c); showTimeline(ch.dataset.c); });
+  ip.querySelectorAll('[data-node]').forEach(d => d.onclick = () => showNode(d.dataset.node, true)); }
+function kv(k, v){ return v ? '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' : ''; }
+function showNode(id, centre){
+  const n = ND[id]; if (!n) return;
+  let h = '<h3>' + esc(n.label) + '</h3>' + imgTag(n.image, 'pic') + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
+  if (n.codes.length) {
+    h += '<div class="k">Timelines through this event</div><div class="v">' + n.codes.map(chip).join('') + '</div>';
+    n.codes.forEach(c => { const t = TL[c];
+      h += '<div class="k">' + esc(t.label) + ' — sequence</div><div class="seq">' +
+        t.nodes.map(i => '<div data-node="' + esc(i) + '"' + (i === id ? ' class="cur"' : '') + '>' + esc(ND[i].time_label) + ' · ' + esc(ND[i].label) + ' <span style="color:#aaa">[' + esc((ST[ND[i].stream] || {}).label || ND[i].stream) + ']</span></div>').join('') + '</div>'; });
+  }
+  const ov = D.overlays.filter(o => o.from === id || o.to === id);
+  if (ov.length) h += '<div class="k">Links</div>' + ov.map(o => '<div class="v">' + esc(o.label) + ': ' + esc(ND[o.from].label) + ' → ' + esc(ND[o.to].label) + (o.text ? ' (' + esc(o.text) + ')' : '') + '</div>').join('');
+  ip.innerHTML = h; bindChips();
+  if (centre) { hitNodes = new Set([id]); apply(); }
+}
+function showTimeline(c){
+  const t = TL[c]; if (!t) return;
+  let h = '<h3><span class="chip" data-c="' + esc(c) + '"><i style="background:' + esc(t.colour) + '"></i>' + esc(t.label) + '</span></h3>' + kv('Description', t.description);
+  h += '<div class="k">Sequence (' + t.nodes.length + ' events)</div><div class="seq">' +
+    t.nodes.map(i => '<div data-node="' + esc(i) + '">' + esc(ND[i].time_label) + ' · ' + esc(ND[i].label) + ' <span style="color:#aaa">[' + esc((ST[ND[i].stream] || {}).label || ND[i].stream) + ']</span></div>').join('') + '</div>';
+  const cross = []; for (let k = 1; k < t.nodes.length; k++) { const a = ND[t.nodes[k-1]], b = ND[t.nodes[k]];
+    if (a.stream !== b.stream) cross.push(esc(b.time_label) + ': ' + esc((ST[a.stream]||{}).label || a.stream) + ' → ' + esc((ST[b.stream]||{}).label || b.stream)); }
+  if (cross.length) h += '<div class="k">Stream crossings</div><div class="v">' + cross.join('\n') + '</div>';
+  ip.innerHTML = h; bindChips();
+}
+function showStream(sid){
+  const s = ST[sid]; const ns = D.nodes.filter(n => n.stream === sid).sort((a, b) => a.t - b.t);
+  ip.innerHTML = '<h3>' + esc(s.label) + '</h3>' + kv('Description', s.description) +
+    '<div class="k">Events (' + ns.length + ')</div><div class="seq">' + ns.map(n => '<div data-node="' + esc(n.id) + '">' + esc(n.time_label) + ' · ' + esc(n.label) + '</div>').join('') + '</div>';
+  bindChips();
+}
+function showWindow(k){
+  const w = D.windows[k]; if (!w) return;
+  const inside = D.nodes.filter(n => n.t >= w.t0 && n.t <= w.t1).sort((a, b) => a.t - b.t);
+  ip.innerHTML = '<h3>' + esc(w.label || 'Window') + '</h3>' + kv('Period', w.period) + kv('Description', w.description) +
+    '<div class="k">Events inside (' + inside.length + ')</div><div class="seq">' + inside.map(n => '<div data-node="' + esc(n.id) + '">' + esc(n.time_label) + ' · ' + esc(n.label) + ' <span style="color:#aaa">[' + esc((ST[n.stream]||{}).label || n.stream) + ']</span></div>').join('') + '</div>';
+  bindChips();
+}
+
+/* ── SVG interaction ── */
+let lastEv = null;
+const placeTT = (ev) => { if (ev) lastEv = ev; if (!lastEv) return;
+  const w = tt.offsetWidth, h = tt.offsetHeight;
+  let x = lastEv.clientX + 14, y = lastEv.clientY + 14;
+  if (x + w > window.innerWidth - 4) x = Math.max(4, lastEv.clientX - w - 14);
+  if (y + h > window.innerHeight - 4) y = Math.max(4, window.innerHeight - h - 4);
+  tt.style.left = x + 'px'; tt.style.top = y + 'px'; };
+const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block'; placeTT(ev);
+  tt.querySelectorAll('img').forEach(im => { im.onload = () => placeTT();
+    im.onerror = () => { im.replaceWith(Object.assign(document.createElement('div'), {textContent: '[image not available]', style: 'color:#f99;font-size:11px;margin-top:4px'})); placeTT(); }; }); };
+const imgTag = (src, cls) => src ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + esc(src) + '" alt="" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
+const hideTT = () => { tt.style.display = 'none'; };
+q('.tl-edge').forEach(el => {
+  const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
+  el.addEventListener('mouseenter', ev => { hover = c; apply();
+    showTT(ev, '<b>' + esc(t.label) + '</b>\n' + esc(ND[e.from].label) + ' → ' + esc(ND[e.to].label) + (e.text ? '\n' + esc(e.text) : '') + (t.description ? '\n' + esc(t.description) : '')); });
+  el.addEventListener('mousemove', placeTT);
+  el.addEventListener('mouseleave', () => { hover = null; apply(); hideTT(); });
+  el.addEventListener('click', ev => { if (moved) return; togglePin(c); showTimeline(c); });
+});
+q('.tl-label, .tl-legend-item[data-tl]').forEach(el => {
+  const c = el.getAttribute('data-tl'); el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', () => { hover = c; apply(); });
+  el.addEventListener('mouseleave', () => { hover = null; apply(); });
+  el.addEventListener('click', () => { if (!moved) { togglePin(c); showTimeline(c); } });
+});
+q('.tl-node').forEach(el => {
+  const id = el.getAttribute('data-id'), n = ND[id];
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n.label) + '</b>\n' + esc(n.time_label) + ' · ' + esc((ST[n.stream]||{}).label || n.stream) + (n.description ? '\n' + esc(n.description) : '') + imgTag(n.image)));
+  el.addEventListener('mousemove', placeTT);
+  el.addEventListener('mouseleave', hideTT);
+  el.addEventListener('click', () => { if (!moved) showNode(id, false); });
+});
+q('.tl-window').forEach(el => {
+  const k = +el.getAttribute('data-win') - 1, w = D.windows[k]; el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(w.label || 'Window') + '</b>\n' + esc(w.period) + (w.description ? '\n' + esc(w.description) : '')));
+  el.addEventListener('mouseleave', hideTT);
+  el.addEventListener('click', () => { if (!moved) showWindow(k); });
+});
+q('.tl-overlay').forEach((el, i) => {
+  const o = D.overlays[i];
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(o.label) + '</b>\n' + esc(ND[o.from].label) + ' → ' + esc(ND[o.to].label) + (o.text ? '\n' + esc(o.text) : '')));
+  el.addEventListener('mouseleave', hideTT);
+});
+
+/* ── search ── */
+document.getElementById('q').addEventListener('input', ev => {
+  const s = ev.target.value.trim().toLowerCase();
+  hitNodes = new Set();
+  if (s) D.nodes.forEach(n => { if ((n.label + ' ' + n.time_label + ' ' + n.description + ' ' + n.id).toLowerCase().includes(s)) hitNodes.add(n.id); });
+  apply();
+});
+
+/* ── buttons ── */
+document.getElementById('bReset').onclick = fit;
+document.getElementById('bClear').onclick = () => { pinned.clear(); hover = null; hitNodes = new Set(); document.getElementById('q').value = ''; apply(); };
+document.getElementById('bSvg').onclick = () => {
+  const c = svg.cloneNode(true); c.setAttribute('viewBox', '0 0 ' + W0 + ' ' + H0);
+  c.setAttribute('width', W0); c.setAttribute('height', H0);
+  c.querySelectorAll('.dim').forEach(e => e.classList.remove('dim'));
+  c.querySelectorAll('.hid').forEach(e => e.remove());
+  const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(c)], {type: 'image/svg+xml'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = (D.title || 'timeline').replace(/[^\w\-]+/g, '_') + '.svg'; a.click();
+};
+apply();
+})();
+</script>
+</body>
+</html>

@@ -204,7 +204,7 @@ matrixServer <- function(id, rv, key, file_stub) {
 SETTING_GROUPS <- list(
   "Page & axis" = c("title", "time_scale", "date_format", "axis_label", "show_axis",
                     "show_grid", "plot_width", "padding", "background", "font_family",
-                    "show_legend", "legend_title"),
+                    "show_legend", "legend_title", "tooltip_image_width"),
   "Streams" = c("stream_height", "stream_gap", "stream_label_width", "stream_fontsize",
                 "stream_colours", "stream_alpha"),
   "Events (nodes)" = c("node_shape", "node_colour", "node_alpha", "node_stroke",
@@ -266,6 +266,7 @@ ui <- fluidPage(
             "(YYYY-MM-DD / YYYY-MM) or phase name. <i>slot</i> 0–1 = manual vertical",
             "position inside the stream (blank = auto). Style: shape, colour, alpha, stroke,",
             "stroke_width, linetype, fontcolour, fontsize, width, height, label_position.",
+            "<i>image</i>: picture URL shown when hovering the event in the HTML.",
             "Type <code>\\n</code> in a label for a line break."))),
         tabPanel("Links",
           matrixUI("adj", "Timeline links (adjacency matrix)", paste(

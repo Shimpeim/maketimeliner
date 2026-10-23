@@ -97,14 +97,17 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
          description = cs$description[k], nodes = I(ids))
   })
   tl <- Filter(function(t) length(t$nodes) > 0, tl)
+  img <- .safe_url(nd$image)
   w  <- L$windows
   list(
     title = L$S$title,
+    image_width = L$S$tooltip_image_width,
     timelines = tl,
     nodes = lapply(seq_len(nrow(nd)), function(i)
       list(id = nd$id[i], label = gsub("\n", " ", nd$label[i]), t = nd$t[i],
            time_label = as.character(ts$fmt(nd$time[i])), stream = nd$stream[i],
-           description = nd$description[i], codes = I(codes_of[[i]]))),
+           description = nd$description[i], image = img[i],
+           codes = I(codes_of[[i]]))),
     edges = lapply(seq_len(nrow(e)), function(i)
       list(code = e$code[i], from = e$from[i], to = e$to[i], text = e$text[i])),
     streams = lapply(seq_len(nrow(L$streams)), function(i)
@@ -122,4 +125,20 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
       list(code = L$overlay$code[i], label = L$overlay$label[i],
            from = L$overlay$from[i], to = L$overlay$to[i], text = L$overlay$text[i]))
   )
+}
+
+# Picture URLs for <img src>: http(s), protocol-relative, data:image/ and
+# relative / absolute file paths are kept; anything else (e.g. javascript:)
+# is dropped with a warning.
+.safe_url <- function(x) {
+  x <- trimws(.chr(x, ""))
+  ok <- !nzchar(x) | grepl("^(https?:)?//", x, ignore.case = TRUE) |
+    grepl("^data:image/", x, ignore.case = TRUE) |
+    !grepl("^[A-Za-z][A-Za-z0-9+.-]*:", x) |
+    grepl("^[A-Za-z]:[\\\\/]", x) | grepl("^file:", x, ignore.case = TRUE)
+  if (any(!ok))
+    warning("Ignoring unsupported image URL(s): ", paste(x[!ok], collapse = ", "),
+            call. = FALSE)
+  x[!ok] <- ""
+  x
 }
