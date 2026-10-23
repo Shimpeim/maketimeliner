@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;display:flex;height:100vh;overflow:hidden;background:#f2f2f4;color:#222}
+/* sidebar */
+#sb{width:240px;flex-shrink:0;padding:13px 11px;overflow-y:auto;background:#f8f8fa;border-right:1px solid #ddd;font-size:13px}
+#sb h2{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px;line-height:1.3}
+.meta{font-size:10px;color:#aaa;margin-bottom:12px;line-height:1.55}
+.c{margin-bottom:13px}
+.c>b{display:block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#999;margin-bottom:4px}
+.c input[type=text]{width:100%;font-size:12px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;background:#fff}
+.row{display:flex;align-items:center;gap:6px;padding:3px 4px;border-radius:4px;cursor:pointer;font-size:12px;user-select:none}
+.row:hover{background:#ececf2}
+.row.pin{background:#e3e6f5;font-weight:600}
+.row input{cursor:pointer;margin:0}
+.sw{width:18px;height:4px;border-radius:2px;flex-shrink:0}
+.sq{width:11px;height:11px;border-radius:2px;flex-shrink:0;border:1px solid #ccc}
+.lab{flex:1;line-height:1.25}
+.btns{display:flex;flex-wrap:wrap;gap:4px}
+button{font-size:11px;padding:3px 8px;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer;color:#444;font-family:inherit}
+button:hover{background:#eee}
+.mini{font-size:10px;color:#888;cursor:pointer;margin-left:6px;font-weight:400;letter-spacing:0;text-transform:none}
+.mini:hover{text-decoration:underline}
+/* main */
+#main{display:flex;flex:1;min-width:0}
+#gp{flex:1;min-width:0;background:#fff;position:relative;overflow:hidden;cursor:grab}
+#gp.drag{cursor:grabbing}
+#gp>svg{width:100%;height:100%;display:block}
+#zoomhint{position:absolute;right:10px;bottom:8px;font-size:10px;color:#bbb;pointer-events:none}
+/* info panel */
+#ip{width:30%;min-width:220px;max-width:420px;background:#fff;border-left:1px solid #e8e8e8;overflow-y:auto;padding:15px 13px;font-size:13px}
+#ip h3{font-size:13px;font-weight:700;color:#1a1a2e;margin:0 0 6px;border-bottom:1px solid #f0f0f0;padding-bottom:4px}
+#ip .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-top:9px}
+#ip .v{margin-top:2px;line-height:1.5;white-space:pre-wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:2px 9px;margin:2px 3px 2px 0;font-size:11px;background:#f3f3f6;cursor:pointer}
+.chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.seq{margin:4px 0 0 4px;border-left:2px solid #eee;padding-left:8px}
+.seq div{padding:2px 0;cursor:pointer;font-size:12px}
+.seq div:hover{text-decoration:underline}
+.seq .cur{font-weight:700}
+.empty{color:#bbb;font-style:italic;font-size:12px}
+/* tooltip */
+#tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:12px;padding:6px 9px;border-radius:5px;max-width:320px;line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
+/* highlight states */
+svg .dim{opacity:.1;transition:opacity .15s}
+svg .hid{display:none}
+svg .tl-edge,svg .tl-node,svg .tl-label,svg .tl-overlay,svg .tl-nlabel,svg .tl-elabel{transition:opacity .15s}
+svg .tl-node{cursor:pointer}
+svg .tl-edge{cursor:pointer}
+svg .tl-node.hit circle,svg .tl-node.hit rect,svg .tl-node.hit ellipse,svg .tl-node.hit polygon{stroke:#d00 !important;stroke-width:3px !important}
+@media (max-width:760px){body{flex-direction:column;height:auto;overflow:auto}#sb{width:100%}#main{flex-direction:column}#gp{height:70vh}#ip{width:100%;max-width:none}}
+</style>
+</head>
+<body>
+<div id="sb">
+  <h2>__TITLE__</h2>
+  <div class="meta">Generated: __GENERATED__ · maketimeliner __VERSION__</div>
+  <div class="c"><b>Find event</b><input type="text" id="q" placeholder="label, time, description…"></div>
+  <div class="c"><b>Timelines <span class="mini" id="allTl">all</span><span class="mini" id="noneTl">none</span></b><div id="tlList"></div></div>
+  <div class="c"><b>Streams</b><div id="stList"></div></div>
+  <div class="c"><b>View</b><div class="btns">
+    <button id="bReset">Reset view</button><button id="bClear">Clear highlight</button>
+    <button id="bSvg">Download SVG</button></div></div>
+  <div class="c" style="font-size:11px;color:#999;line-height:1.5">Hover a timeline to highlight it; click to pin (several can be pinned). Click an event for details. Scroll to zoom, drag to pan.</div>
+</div>
+<div id="main">
+  <div id="gp">__SVG__<div id="zoomhint">scroll = zoom · drag = pan</div></div>
+  <div id="ip"><h3>Details</h3><div class="empty">Click an event, a timeline or a window.</div></div>
+</div>
+<div id="tt"></div>
+<script>
+const D = __DATA__;
+(function(){
+const gp = document.getElementById('gp'), svg = gp.querySelector('svg');
+const ip = document.getElementById('ip'), tt = document.getElementById('tt');
+svg.querySelectorAll('title').forEach(t => t.remove());   // custom tooltips instead
+const W0 = +svg.getAttribute('width'), H0 = +svg.getAttribute('height');
+svg.removeAttribute('width'); svg.removeAttribute('height');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TL = {}; D.timelines.forEach(t => TL[t.code] = t);
+const ND = {}; D.nodes.forEach(n => ND[n.id] = n);
+const ST = {}; D.streams.forEach(s => ST[s.id] = s);
+const q = (sel) => Array.from(svg.querySelectorAll(sel));
+const attrEq = (a, v) => '[' + a + '="' + CSS.escape(v) + '"]';
+
+/* ── pan / zoom (viewBox) ── */
+let vb = {x:0, y:0, w:W0, h:H0};
+const setVB = () => svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
+function fit(){ vb = {x:0, y:0, w:W0, h:H0}; setVB(); }
+fit();
+const pt = (ev) => { const r = svg.getBoundingClientRect();
+  const s = Math.max(vb.w / r.width, vb.h / r.height);
+  const ox = (r.width * s - vb.w) / 2, oy = (r.height * s - vb.h) / 2;
+  return {x: vb.x - ox + (ev.clientX - r.left) * s, y: vb.y - oy + (ev.clientY - r.top) * s, s: s}; };
+gp.addEventListener('wheel', ev => { ev.preventDefault();
+  const p = pt(ev), k = Math.exp(ev.deltaY * 0.0015);
+  const nw = Math.min(Math.max(vb.w * k, W0 / 20), W0 * 4); const kk = nw / vb.w;
+  vb = {x: p.x - (p.x - vb.x) * kk, y: p.y - (p.y - vb.y) * kk, w: nw, h: vb.h * kk}; setVB(); }, {passive:false});
+let drag = null, moved = false;
+gp.addEventListener('mousedown', ev => { drag = {cx: ev.clientX, cy: ev.clientY, x: vb.x, y: vb.y, s: pt(ev).s}; moved = false; });
+window.addEventListener('mousemove', ev => { if (!drag) return;
+  const dx = ev.clientX - drag.cx, dy = ev.clientY - drag.cy;
+  if (Math.abs(dx) + Math.abs(dy) > 3) { moved = true; gp.classList.add('drag'); }
+  vb.x = drag.x - dx * drag.s; vb.y = drag.y - dy * drag.s; setVB(); });
+window.addEventListener('mouseup', () => { drag = null; gp.classList.remove('drag'); });
+
+/* ── visibility + highlight state ── */
+const hidden = new Set(), pinned = new Set(), dimStreams = new Set();
+let hover = null, hitNodes = new Set();
+function apply(){
+  const focus = new Set(pinned); if (hover != null) focus.add(hover);
+  const any = focus.size > 0;
+  const onNodes = new Set();
+  D.edges.forEach(e => { if (focus.has(e.code)) { onNodes.add(e.from); onNodes.add(e.to); } });
+  q('.tl-edge, .tl-label, .tl-elabel, .tl-legend-item[data-tl]').forEach(el => {
+    const c = el.getAttribute('data-tl');
+    el.classList.toggle('hid', hidden.has(c));
+    el.classList.toggle('dim', any && !focus.has(c));
+  });
+  q('.tl-node').forEach(el => {
+    const id = el.getAttribute('data-id'), n = ND[id];
+    const vis = n.codes.length === 0 || n.codes.some(c => !hidden.has(c));
+    el.classList.toggle('hid', !vis);
+    el.classList.toggle('dim', (any && !onNodes.has(id)) || dimStreams.has(n.stream) || (hitNodes.size > 0 && !hitNodes.has(id)));
+    el.classList.toggle('hit', hitNodes.has(id));
+  });
+  q('.tl-overlay, .tl-ovlabel').forEach(el => el.classList.toggle('dim', any));
+  q('.tl-stream').forEach(el => el.classList.toggle('dim', dimStreams.has(el.getAttribute('data-stream'))));
+  document.querySelectorAll('#tlList .row').forEach(r => {
+    const c = r.dataset.code; r.classList.toggle('pin', pinned.has(c));
+    r.querySelector('input').checked = !hidden.has(c); });
+}
+
+/* ── sidebar lists ── */
+const tlList = document.getElementById('tlList');
+D.timelines.forEach(t => {
+  const r = document.createElement('div'); r.className = 'row'; r.dataset.code = t.code;
+  r.innerHTML = '<input type="checkbox" checked><span class="sw" style="background:' + esc(t.colour) + '"></span><span class="lab">' + esc(t.label) + '</span>';
+  r.querySelector('input').addEventListener('click', ev => { ev.stopPropagation();
+    ev.target.checked ? hidden.delete(t.code) : hidden.add(t.code); apply(); });
+  r.addEventListener('mouseenter', () => { hover = t.code; apply(); });
+  r.addEventListener('mouseleave', () => { hover = null; apply(); });
+  r.addEventListener('click', () => { togglePin(t.code); showTimeline(t.code); });
+  tlList.appendChild(r);
+});
+if (!D.timelines.length) tlList.innerHTML = '<div class="empty">none</div>';
+document.getElementById('allTl').onclick = () => { hidden.clear(); apply(); };
+document.getElementById('noneTl').onclick = () => { D.timelines.forEach(t => hidden.add(t.code)); apply(); };
+const stList = document.getElementById('stList');
+D.streams.forEach(s => {
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = '<input type="checkbox" checked><span class="sq" style="background:' + esc(s.colour) + '"></span><span class="lab">' + esc(s.label) + '</span>';
+  r.querySelector('input').addEventListener('change', ev => {
+    ev.target.checked ? dimStreams.delete(s.id) : dimStreams.add(s.id); apply(); });
+  r.addEventListener('click', ev => { if (ev.target.tagName !== 'INPUT') showStream(s.id); });
+  stList.appendChild(r);
+});
+function togglePin(c){ pinned.has(c) ? pinned.delete(c) : pinned.add(c); apply(); }
+
+/* ── info panel ── */
+const chip = c => { const t = TL[c]; return t ? '<span class="chip" data-c="' + esc(c) + '"><i style="background:' + esc(t.colour) + '"></i>' + esc(t.label) + '</span>' : ''; };
+function bindChips(){ ip.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { togglePin(ch.dataset.c); showTimeline(ch.dataset.c); });
+  ip.querySelectorAll('[data-node]').forEach(d => d.onclick = () => showNode(d.dataset.node, true)); }
+function kv(k, v){ return v ? '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' : ''; }
+function showNode(id, centre){
+  const n = ND[id]; if (!n) return;
+  let h = '<h3>' + esc(n.label) + '</h3>' + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
+  if (n.codes.length) {
+    h += '<div class="k">Timelines through this event</div><div class="v">' + n.codes.map(chip).join('') + '</div>';
+    n.codes.forEach(c => { const t = TL[c];
+      h += '<div class="k">' + esc(t.label) + ' — sequence</div><div class="seq">' +
+        t.nodes.map(i => '<div data-node="' + esc(i) + '"' + (i === id ? ' class="cur"' : '') + '>' + esc(ND[i].time_label) + ' · ' + esc(ND[i].label) + ' <span style="color:#aaa">[' + esc((ST[ND[i].stream] || {}).label || ND[i].stream) + ']</span></div>').join('') + '</div>'; });
+  }
+  const ov = D.overlays.filter(o => o.from === id || o.to === id);
+  if (ov.length) h += '<div class="k">Links</div>' + ov.map(o => '<div class="v">' + esc(o.label) + ': ' + esc(ND[o.from].label) + ' → ' + esc(ND[o.to].label) + (o.text ? ' (' + esc(o.text) + ')' : '') + '</div>').join('');
+  ip.innerHTML = h; bindChips();
+  if (centre) { hitNodes = new Set([id]); apply(); }
+}
+function showTimeline(c){
+  const t = TL[c]; if (!t) return;
+  let h = '<h3><span class="chip" data-c="' + esc(c) + '"><i style="background:' + esc(t.colour) + '"></i>' + esc(t.label) + '</span></h3>' + kv('Description', t.description);
+  h += '<div class="k">Sequence (' + t.nodes.length + ' events)</div><div class="seq">' +
+    t.nodes.map(i => '<div data-node="' + esc(i) + '">' + esc(ND[i].time_label) + ' · ' + esc(ND[i].label) + ' <span style="color:#aaa">[' + esc((ST[ND[i].stream] || {}).label || ND[i].stream) + ']</span></div>').join('') + '</div>';
+  const cross = []; for (let k = 1; k < t.nodes.length; k++) { const a = ND[t.nodes[k-1]], b = ND[t.nodes[k]];
+    if (a.stream !== b.stream) cross.push(esc(b.time_label) + ': ' + esc((ST[a.stream]||{}).label || a.stream) + ' → ' + esc((ST[b.stream]||{}).label || b.stream)); }
+  if (cross.length) h += '<div class="k">Stream crossings</div><div class="v">' + cross.join('\n') + '</div>';
+  ip.innerHTML = h; bindChips();
+}
+function showStream(sid){
+  const s = ST[sid]; const ns = D.nodes.filter(n => n.stream === sid).sort((a, b) => a.t - b.t);
+  ip.innerHTML = '<h3>' + esc(s.label) + '</h3>' + kv('Description', s.description) +
+    '<div class="k">Events (' + ns.length + ')</div><div class="seq">' + ns.map(n => '<div data-node="' + esc(n.id) + '">' + esc(n.time_label) + ' · ' + esc(n.label) + '</div>').join('') + '</div>';
+  bindChips();
+}
+function showWindow(k){
+  const w = D.windows[k]; if (!w) return;
+  const inside = D.nodes.filter(n => n.t >= w.t0 && n.t <= w.t1).sort((a, b) => a.t - b.t);
+  ip.innerHTML = '<h3>' + esc(w.label || 'Window') + '</h3>' + kv('Period', w.period) + kv('Description', w.description) +
+    '<div class="k">Events inside (' + inside.length + ')</div><div class="seq">' + inside.map(n => '<div data-node="' + esc(n.id) + '">' + esc(n.time_label) + ' · ' + esc(n.label) + ' <span style="color:#aaa">[' + esc((ST[n.stream]||{}).label || n.stream) + ']</span></div>').join('') + '</div>';
+  bindChips();
+}
+
+/* ── SVG interaction ── */
+const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block';
+  tt.style.left = Math.min(ev.clientX + 14, window.innerWidth - 330) + 'px'; tt.style.top = (ev.clientY + 14) + 'px'; };
+const hideTT = () => { tt.style.display = 'none'; };
+q('.tl-edge').forEach(el => {
+  const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
+  el.addEventListener('mouseenter', ev => { hover = c; apply();
+    showTT(ev, '<b>' + esc(t.label) + '</b>\n' + esc(ND[e.from].label) + ' → ' + esc(ND[e.to].label) + (e.text ? '\n' + esc(e.text) : '') + (t.description ? '\n' + esc(t.description) : '')); });
+  el.addEventListener('mousemove', ev => { tt.style.left = Math.min(ev.clientX + 14, window.innerWidth - 330) + 'px'; tt.style.top = (ev.clientY + 14) + 'px'; });
+  el.addEventListener('mouseleave', () => { hover = null; apply(); hideTT(); });
+  el.addEventListener('click', ev => { if (moved) return; togglePin(c); showTimeline(c); });
+});
+q('.tl-label, .tl-legend-item[data-tl]').forEach(el => {
+  const c = el.getAttribute('data-tl'); el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', () => { hover = c; apply(); });
+  el.addEventListener('mouseleave', () => { hover = null; apply(); });
+  el.addEventListener('click', () => { if (!moved) { togglePin(c); showTimeline(c); } });
+});
+q('.tl-node').forEach(el => {
+  const id = el.getAttribute('data-id'), n = ND[id];
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n.label) + '</b>\n' + esc(n.time_label) + ' · ' + esc((ST[n.stream]||{}).label || n.stream) + (n.description ? '\n' + esc(n.description) : '')));
+  el.addEventListener('mouseleave', hideTT);
+  el.addEventListener('click', () => { if (!moved) showNode(id, false); });
+});
+q('.tl-window').forEach(el => {
+  const k = +el.getAttribute('data-win') - 1, w = D.windows[k]; el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(w.label || 'Window') + '</b>\n' + esc(w.period) + (w.description ? '\n' + esc(w.description) : '')));
+  el.addEventListener('mouseleave', hideTT);
+  el.addEventListener('click', () => { if (!moved) showWindow(k); });
+});
+q('.tl-overlay').forEach((el, i) => {
+  const o = D.overlays[i];
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(o.label) + '</b>\n' + esc(ND[o.from].label) + ' → ' + esc(ND[o.to].label) + (o.text ? '\n' + esc(o.text) : '')));
+  el.addEventListener('mouseleave', hideTT);
+});
+
+/* ── search ── */
+document.getElementById('q').addEventListener('input', ev => {
+  const s = ev.target.value.trim().toLowerCase();
+  hitNodes = new Set();
+  if (s) D.nodes.forEach(n => { if ((n.label + ' ' + n.time_label + ' ' + n.description + ' ' + n.id).toLowerCase().includes(s)) hitNodes.add(n.id); });
+  apply();
+});
+
+/* ── buttons ── */
+document.getElementById('bReset').onclick = fit;
+document.getElementById('bClear').onclick = () => { pinned.clear(); hover = null; hitNodes = new Set(); document.getElementById('q').value = ''; apply(); };
+document.getElementById('bSvg').onclick = () => {
+  const c = svg.cloneNode(true); c.setAttribute('viewBox', '0 0 ' + W0 + ' ' + H0);
+  c.setAttribute('width', W0); c.setAttribute('height', H0);
+  c.querySelectorAll('.dim').forEach(e => e.classList.remove('dim'));
+  c.querySelectorAll('.hid').forEach(e => e.remove());
+  const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(c)], {type: 'image/svg+xml'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = (D.title || 'timeline').replace(/[^\w\-]+/g, '_') + '.svg'; a.click();
+};
+apply();
+})();
+</script>
+</body>
+</html>

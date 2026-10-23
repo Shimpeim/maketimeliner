@@ -1,0 +1,27 @@
+"id","label","time","stream","shape","colour","width","height","label_position","description"
+"p00","Cost indicators
+published","2000","problem","circle","#FFFFFF",14,14,"above","Routine indicators show treatment costs rising faster than inflation."
+"p03","Focusing event:
+hospital crisis","2003","problem","diamond","#FDE2E2",16,16,"above","A highly visible crisis draws attention to the problem (focusing event)."
+"p06","Programme
+evaluation","2006","problem","circle","#FFFFFF",14,14,"above","Feedback from existing programmes confirms the problem."
+"p08","Media agenda
+peaks","2008","problem","circle","#FFFFFF",14,14,"above","The problem reaches the top of the media agenda."
+"s01","Think-tank
+idea","2001","policy","circle","#FFFFFF",14,14,"above","An idea floats in the policy primeval soup."
+"s04","Softening up","2004","policy","circle","#FFFFFF",14,14,"above","Policy community discusses and recombines the idea."
+"s07","Feasibility
+study","2007","policy","circle","#FFFFFF",14,14,"above","Technical feasibility and value acceptability are tested."
+"s09","Bill adopted","2009","policy","rounded","#FFF4C2",26,18,"below","Streams are coupled during the policy window; the bill passes."
+"e02","Drafts
+proposal","2002","policy","triangle","#E8F0FE",15,15,"above","The entrepreneur drafts a proposal in advance of a window."
+"e05","Frames the
+crisis","2005","problem","triangle","#E8F0FE",15,15,"above","The entrepreneur attaches the proposal to the problem framing."
+"e08","Lobbies new
+government","2008","politics","triangle","#E8F0FE",15,15,"above","The entrepreneur works the new government's agenda."
+"m01","Public mood
+shifts","2001","politics","circle","#FFFFFF",14,14,"above","National mood begins to favour action."
+"m04","Interest-group
+campaign","2004","politics","circle","#FFFFFF",14,14,"above","Organised interests campaign on the issue."
+"m07","Election:
+turnover","2007","politics","diamond","#FDE2E2",16,16,"above","A change of government opens the political stream."

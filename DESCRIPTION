@@ -1,0 +1,31 @@
+Package: maketimeliner
+Title: Non-Linear Multi-Stream Timelines as Interactive HTML and SVG
+Version: 0.1.0
+Authors@R:
+    person("Shimpei", "Morimoto", email = "mrmt.shmp@gmail.com",
+           role = c("aut", "cre"))
+Description: Draws non-linear chronological diagrams in which several
+    timelines (actors, issues, proposals) move along a time axis while
+    crossing between parallel streams, as in Kingdon's Multiple Streams
+    Framework. Input follows the 'matxingraphout' model: a node-property
+    table (events placed by time and stream) plus an adjacency matrix whose
+    cell values are timeline codes, styled through an edge-property table.
+    Streams, windows, ordinal phases, legends and settings are plain tables
+    importable from CSV. Output is a static SVG and a self-contained
+    interactive HTML file; an optional Shiny app edits every table.
+License: MIT + file LICENSE
+Imports:
+    grDevices,
+    stats,
+    jsonlite,
+    utils
+Suggests:
+    shiny (>= 1.7.0),
+    DT (>= 0.28),
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+URL: https://github.com/Shimpeim/maketimeliner
+BugReports: https://github.com/Shimpeim/maketimeliner/issues

@@ -1,0 +1,5 @@
+"weight","label","colour","alpha","width","linetype","description"
+1,"Issue: treatment costs","#D55E00",0.9,4,"solid","Condition defined as a public problem."
+2,"Proposal: coverage scheme","#0072B2",0.9,4,"solid","Policy alternative developed in the policy community."
+3,"Policy entrepreneur","#009E73",0.95,3,"solid","Actor who couples problems, policies and politics."
+4,"National mood","#CC79A7",0.8,3,"longdash","Politics stream: mood, interest groups, government."

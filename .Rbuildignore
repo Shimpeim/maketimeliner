@@ -1,0 +1,7 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^CLAUDE\.md$
+^\.claude$
+^data-raw$
+^examples$
