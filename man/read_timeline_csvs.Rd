@@ -30,6 +30,7 @@ matxingraphout conventions:
    \verb{_streams.csv} \tab \verb{id, label, order, colour, alpha, stroke, stroke_width, linetype, height, fontcolour, description} \cr
    \verb{_windows.csv} \tab \verb{start, end, label, colour, alpha, stroke, stroke_width, linetype, streams, description} \cr
    \verb{_phases.csv} \tab \verb{phase, order, label} (ordinal time axis) \cr
+   \verb{_spans.csv} \tab durations: \verb{id, start, end, label, colour, alpha, width, linetype, line_colour, line_width, source, description} \cr
    \verb{_link_props.csv} \tab per-link style overrides: \verb{from, to, weight, colour, alpha, width, linetype, label, description} \cr
    \verb{_legend_colours.csv}, \verb{_legend_shapes.csv}, \verb{_legend_linetypes.csv} \tab legend tables \cr
    \verb{_settings.csv} \tab \verb{Setting, Value} \cr

@@ -252,3 +252,48 @@ test_that("legend line-type samples use round caps so dot patterns are visible (
   expect_length(leg, 1)
   expect_match(leg, "stroke-linecap=\"round\"", fixed = TRUE)
 })
+
+test_that("spans draw a band from start to end at the event, with source in HTML", {
+  m <- mini()
+  sp <- data.frame(id = "a", end = 2003, label = "State", colour = "#FF0000",
+                   linetype = "10,6", source = "Text: p. 3", description = "carried by the state")
+  out <- timeline_to_outputs(m$adj, m$nodes, spans = sp, html_file = NULL, svg_file = NULL)
+  expect_match(out$svg, "class=\"tl-span\" data-id=\"a\"", fixed = TRUE)
+  n <- out$layout$nodes; xa <- n$x[n$id == "a"]
+  band <- regmatches(out$svg, regexpr("<line x1=\"[0-9.]+\" y1=\"[0-9.]+\" x2=\"[0-9.]+\"[^>]*stroke=\"#FF0000\" stroke-width=\"8\"", out$svg))
+  x <- as.numeric(sub(".*\"", "", regmatches(band, gregexpr("x[12]=\"[0-9.]+", band))[[1]]))
+  expect_equal(x[1], xa, tolerance = 0.01)
+  expect_gt(x[2], xa)
+  d <- html_data(out$html)
+  expect_equal(d$spans[[1]]$source, "Text: p. 3")
+  expect_equal(d$spans[[1]]$period, "2000 – 2003")
+})
+
+test_that("a span keeps its lane reserved, so a later event in that stream moves lane", {
+  nodes <- data.frame(id = c("a", "b"), time = c(1, 3), stream = "s")
+  adj <- matrix("", 2, 2, dimnames = list(nodes$id, nodes$id))
+  plain <- timeline_to_outputs(adj, nodes, html_file = NULL, svg_file = NULL, time_scale = "numeric")
+  expect_equal(plain$layout$nodes$y[1], plain$layout$nodes$y[2])
+  withspan <- timeline_to_outputs(adj, nodes, spans = data.frame(id = "a", end = 5),
+                                  html_file = NULL, svg_file = NULL, time_scale = "numeric")
+  expect_false(isTRUE(all.equal(withspan$layout$nodes$y[1], withspan$layout$nodes$y[2])))
+})
+
+test_that("several spans per event stack; bad spans warn; CSV round trip", {
+  m <- mini()
+  sp <- data.frame(id = c("a", "a", "zz"), start = c("", "2001", ""), end = c(2002, 2004, 2003))
+  expect_warning(out <- timeline_to_outputs(m$adj, m$nodes, spans = sp, html_file = NULL, svg_file = NULL),
+                 "unknown event id")
+  expect_equal(length(gregexpr("class=\"tl-span\"", out$svg)[[1]]), 2)
+  ok <- timeline_spec(m$adj, m$nodes, spans = sp[1:2, ])
+  d <- tempfile(); write_timeline_csvs(ok, d, "sp")
+  expect_true(file.exists(file.path(d, "sp_spans.csv")))
+  expect_identical(render_timeline(ok, NULL, NULL)$svg, render_timeline(read_timeline_csvs(d), NULL, NULL)$svg)
+})
+
+test_that("ordinal values missing from phases warn", {
+  m <- mini(); m$nodes$time <- c("A", "B", "C", "C")
+  expect_warning(timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
+                                     phases = data.frame(phase = c("A", "B"), order = 1:2)),
+                 "not listed in phases")
+})

@@ -51,6 +51,9 @@
       lab[is.na(lab)] <- lv[is.na(lab)]
     }
     extra <- setdiff(unique(values), lv)
+    if (length(extra) && length(lv))
+      warning("Ordinal time values not listed in phases were added at the end of the axis: ",
+              paste(utils::head(extra, 8), collapse = ", "), call. = FALSE)
     lv  <- c(lv, extra); lab <- c(lab, extra)
     f   <- function(x) as.numeric(match(trimws(as.character(x)), lv))
     fmt <- function(x) { i <- match(trimws(as.character(x)), lv); ifelse(is.na(i), x, lab[i]) }
@@ -139,7 +142,19 @@
   # time scale over nodes + windows
   win <- spec$windows
   win <- win[!(is.na(win$start) | !nzchar(trimws(as.character(win$start)))), , drop = FALSE]
-  tvals <- c(nd$time, as.character(win$start), as.character(win$end))
+  sp <- spec$spans
+  sp <- sp[!is.na(sp$id) & nzchar(trimws(as.character(sp$id))), , drop = FALSE]
+  if (nrow(sp)) {
+    bad <- setdiff(trimws(as.character(sp$id)), nd$id)
+    if (length(bad)) warning("spans: unknown event id(s) ignored: ", paste(bad, collapse = ", "), call. = FALSE)
+    sp <- sp[trimws(as.character(sp$id)) %in% nd$id, , drop = FALSE]
+    sp$id <- trimws(as.character(sp$id))
+    sp$start <- ifelse(is.na(sp$start) | !nzchar(trimws(as.character(sp$start))),
+                       nd$time[match(sp$id, nd$id)], trimws(as.character(sp$start)))
+    sp$end <- trimws(as.character(sp$end))
+    sp <- sp[!is.na(sp$end) & nzchar(sp$end), , drop = FALSE]
+  }
+  tvals <- c(nd$time, as.character(win$start), as.character(win$end), sp$start, sp$end)
   ts <- .time_scale(tvals, S$time_scale, spec$phases, S$date_format, S$plot_width)
 
   pad     <- S$padding
@@ -181,6 +196,12 @@
   nd$label_position <- .chr(nd$label_position, S$label_position)
   nd$description <- .chr(nd$description, "")
   nd$slot <- suppressWarnings(as.numeric(as.character(nd$slot)))
+  span_end_x <- stats::setNames(nd$x, nd$id)
+  if (nrow(sp)) {
+    sx <- xmap(ts$f(sp$end))
+    for (k in seq_len(nrow(sp))) if (!is.na(sx[k]))
+      span_end_x[sp$id[k]] <- max(span_end_x[sp$id[k]], sx[k])
+  }
 
   edges <- .edges_from_matrix(spec$adj)
   edges$code <- .code_key(edges$code)
@@ -212,7 +233,7 @@
       pick  <- cand[which.min(abs(cand - pref) + (cand > length(last_x)) * 0.5)]
       succ  <- unique(edges$to[edges$from == nd$id[i]])
       succ  <- succ[succ %in% nd$id[auto]]
-      bx    <- max(c(xi, nd$x[match(succ, nd$id)]))
+      bx    <- max(c(xi, nd$x[match(succ, nd$id)], span_end_x[[nd$id[i]]] + S$min_node_sep / 2))
       if (pick > length(last_x)) { last_x <- c(last_x, xi); busy <- c(busy, bx) }
       else { last_x[pick] <- xi; busy[pick] <- max(bx, if (xi >= busy[pick]) xi else busy[pick]) }
       lane_of[nd$id[i]] <- pick
@@ -236,6 +257,29 @@
   if (nrow(ov) && !is.null(spec$overlay_edge_labels))
     ov$text <- .chr(spec$overlay_edge_labels[cbind(ov$from, ov$to)], "")
   else ov$text <- rep("", nrow(ov))
+
+  # spans (durations)
+  if (nrow(sp)) {
+    t0 <- ts$f(sp$start); t1 <- ts$f(sp$end)
+    badt <- is.na(t0) | is.na(t1)
+    if (any(badt)) {
+      warning("spans with start/end not on the time axis ignored: ",
+              paste(sp$id[badt], collapse = ", "), call. = FALSE)
+      sp <- sp[!badt, , drop = FALSE]; t0 <- t0[!badt]; t1 <- t1[!badt]
+    }
+    ni <- match(sp$id, nd$id)
+    sp$x0 <- xmap(pmin(t0, t1)); sp$x1 <- xmap(pmax(t0, t1))
+    sp$width <- .num(sp$width, 8)
+    sp$k  <- stats::ave(seq_len(nrow(sp)), sp$id, FUN = seq_along)
+    sp$y  <- nd$y[ni] + (sp$k - 1) * (sp$width + 2)
+    sp$colour <- .hex(sp$colour, "#999999"); sp$alpha <- .num(sp$alpha, 0.3)
+    sp$linetype <- .chr(sp$linetype, "solid")
+    sp$line_colour <- .hex(ifelse(is.na(sp$line_colour) | !nzchar(as.character(sp$line_colour)),
+                                  sp$colour, as.character(sp$line_colour)))
+    sp$line_width <- .num(sp$line_width, 1.6)
+    sp$label <- .chr(sp$label, ""); sp$source <- .chr(sp$source, "")
+    sp$description <- .chr(sp$description, "")
+  }
 
   # windows
   if (nrow(win)) {
@@ -268,7 +312,7 @@
     right <- right + max(.text_w(cs$label, S$fontsize)) + 16
 
   list(S = S, ts = ts, streams = st, nodes = nd, edges = edges, codes = cs,
-       overlay = ov, overlay_codes = os, windows = win,
+       overlay = ov, overlay_codes = os, windows = win, spans = sp,
        x0 = x0, x1 = x0 + S$plot_width, xmap = xmap, top = top,
        bands_bottom = bands_bottom,
        width = x0 + S$plot_width + right,

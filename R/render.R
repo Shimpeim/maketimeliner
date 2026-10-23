@@ -58,13 +58,14 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
                                 overlay_edge_labels = NULL, windows = NULL,
                                 phases = NULL, legend_node_colour = NULL,
                                 legend_node_shape = NULL, link_props = NULL,
-                                legend_linetypes = NULL, settings = list(),
+                                legend_linetypes = NULL, spans = NULL, settings = list(),
                                 html_file = "timeline.html",
                                 svg_file = "timeline.svg", ...) {
   spec <- timeline_spec(adj_matrix, node_props, streams, edge_props, edge_labels,
                         adj_overlay, overlay_edge_props, overlay_edge_labels,
                         windows, phases, legend_node_colour, legend_node_shape,
                         link_props = link_props, legend_linetypes = legend_linetypes,
+                        spans = spans,
                         settings = utils::modifyList(as.list(settings), list(...)))
   render_timeline(spec, html_file = html_file, svg_file = svg_file)
 }
@@ -125,6 +126,13 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
                     else paste(ts$fmt(s), "\u2013", ts$fmt(en)),
            t0 = min(t0, t1), t1 = max(t0, t1))
     }),
+    spans = if (is.null(L$spans) || !nrow(L$spans)) list() else
+      lapply(seq_len(nrow(L$spans)), function(k) {
+        sp <- L$spans
+        list(id = sp$id[k], label = sp$label[k], source = sp$source[k],
+             description = sp$description[k],
+             period = paste(ts$fmt(sp$start[k]), "\u2013", ts$fmt(sp$end[k])))
+      }),
     overlays = lapply(seq_len(nrow(L$overlay)), function(i)
       list(code = L$overlay$code[i], label = L$overlay$label[i],
            from = L$overlay$from[i], to = L$overlay$to[i], text = L$overlay$text[i]))

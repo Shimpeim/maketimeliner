@@ -132,6 +132,8 @@ function apply(){
     el.classList.toggle('hit', hitNodes.has(id));
   });
   q('.tl-overlay, .tl-ovlabel').forEach(el => el.classList.toggle('dim', any));
+  q('.tl-span').forEach(el => { const g = svg.querySelector('.tl-node' + attrEq('data-id', el.getAttribute('data-id')));
+    el.classList.toggle('dim', !!g && g.classList.contains('dim')); el.classList.toggle('hid', !!g && g.classList.contains('hid')); });
   q('.tl-stream').forEach(el => el.classList.toggle('dim', dimStreams.has(el.getAttribute('data-stream'))));
   document.querySelectorAll('#tlList .row').forEach(r => {
     const c = r.dataset.code; r.classList.toggle('pin', pinned.has(c));
@@ -178,6 +180,8 @@ function showNode(id, centre){
       h += '<div class="k">' + esc(t.label) + ' — sequence</div><div class="seq">' +
         t.nodes.map(i => '<div data-node="' + esc(i) + '"' + (i === id ? ' class="cur"' : '') + '>' + esc(ND[i].time_label) + ' · ' + esc(ND[i].label) + ' <span style="color:#aaa">[' + esc((ST[ND[i].stream] || {}).label || ND[i].stream) + ']</span></div>').join('') + '</div>'; });
   }
+  const sps = (D.spans || []).filter(x => x.id === id);
+  if (sps.length) h += '<div class="k">Carried</div>' + sps.map(x => '<div class="v"><b>' + esc(x.period) + '</b>' + (x.label ? ' \u00b7 ' + esc(x.label) : '') + (x.source ? '\nSource: ' + esc(x.source) : '') + (x.description ? '\n' + esc(x.description) : '') + '</div>').join('');
   const ov = D.overlays.filter(o => o.from === id || o.to === id);
   if (ov.length) h += '<div class="k">Links</div>' + ov.map(o => '<div class="v">' + esc(o.label) + ': ' + esc(ND[o.from].label) + ' → ' + esc(ND[o.to].label) + (o.text ? ' (' + esc(o.text) + ')' : '') + '</div>').join('');
   ip.innerHTML = h; bindChips();
@@ -246,6 +250,14 @@ q('.tl-window').forEach(el => {
   el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(w.label || 'Window') + '</b>\n' + esc(w.period) + (w.description ? '\n' + esc(w.description) : '')));
   el.addEventListener('mouseleave', hideTT);
   el.addEventListener('click', () => { if (!moved) showWindow(k); });
+});
+q('.tl-span').forEach(el => {
+  const x = (D.spans || [])[+el.getAttribute('data-span') - 1]; if (!x) return;
+  const n = ND[x.id]; el.style.cursor = 'pointer';
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n ? n.label : x.id) + '</b>\n' + esc(x.period) + (x.label ? ' \u00b7 ' + esc(x.label) : '') + (x.source ? '\nSource: ' + esc(x.source) : '') + (x.description ? '\n' + esc(x.description) : '')));
+  el.addEventListener('mousemove', placeTT);
+  el.addEventListener('mouseleave', hideTT);
+  el.addEventListener('click', () => { if (!moved) showNode(x.id, false); });
 });
 q('.tl-overlay').forEach((el, i) => {
   const o = D.overlays[i];

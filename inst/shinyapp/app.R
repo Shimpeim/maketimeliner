@@ -246,7 +246,7 @@ ui <- fluidPage(
               "(<code>_node_props</code>, <code>_adj</code>, <code>_edge_props</code>,",
               "<code>_edge_labels</code>, <code>_overlay</code>, <code>_overlay_edge_props</code>,",
               "<code>_overlay_edge_labels</code>, <code>_streams</code>, <code>_windows</code>,",
-              "<code>_phases</code>, <code>_link_props</code>, <code>_legend_colours</code>,",
+              "<code>_phases</code>, <code>_link_props</code>, <code>_spans</code>, <code>_legend_colours</code>,",
               "<code>_legend_shapes</code>, <code>_legend_linetypes</code>,",
               "<code>_settings</code>). Only <code>_node_props</code> is required."))),
             fileInput("batch", NULL, multiple = TRUE, accept = ".csv",
@@ -269,7 +269,11 @@ ui <- fluidPage(
             "position inside the stream (blank = auto). Style: shape, colour, alpha, stroke,",
             "stroke_width, linetype, fontcolour, fontsize, width, height, label_position.",
             "<i>image</i>: picture URL shown when hovering the event in the HTML.",
-            "Type <code>\\n</code> in a label for a line break."))),
+            "Type <code>\\n</code> in a label for a line break.")),
+          tableUI("spans", "Spans (how long an event is carried)", paste(
+            "One row per period an event is carried: <b>id</b> (event), <i>start</i> (blank =",
+            "event time), <b>end</b>, label (e.g. the carrying actor), band colour / alpha /",
+            "width, centre-line linetype / line_colour / line_width, source, description."))),
         tabPanel("Links",
           matrixUI("adj", "Timeline links (adjacency matrix)", paste(
             "Each link = one step of a timeline from an event to a later event.",
@@ -345,6 +349,7 @@ server <- function(input, output, session) {
     rv$legend_shapes  <- as_chr_df(spec$legend_shapes, "legend_shapes")
     rv$link_props     <- as_chr_df(spec$link_props, "link_props")
     rv$legend_linetypes <- as_chr_df(spec$legend_linetypes, "legend_linetypes")
+    rv$spans          <- as_chr_df(spec$spans, "spans")
     rv$adj   <- spec$adj
     rv$elab  <- spec$edge_labels
     rv$ov    <- spec$overlay
@@ -353,7 +358,7 @@ server <- function(input, output, session) {
     rv$prefix <- prefix
     updateTextInput(session, "prefix", value = prefix)
     keys <- c("nodes", "streams", "edge_props", "ov_props", "windows", "phases",
-              "legend_colours", "legend_shapes", "link_props", "legend_linetypes",
+              "legend_colours", "legend_shapes", "link_props", "legend_linetypes", "spans",
               "adj", "elab", "ov", "ovlab")
     v <- isolate(rv$ver)
     for (k in keys) v[[k]] <- (v[[k]] %||% 0) + 1
@@ -375,6 +380,7 @@ server <- function(input, output, session) {
   tableServer("legend_shapes", rv, "legend_shapes", "legend_shapes", "legend_shapes")
   tableServer("link_props", rv, "link_props", "link_props", "link_props")
   tableServer("legend_linetypes", rv, "legend_linetypes", "legend_linetypes", "legend_linetypes")
+  tableServer("spans", rv, "spans", "spans", "spans")
   matrixServer("adj", rv, "adj", "adj")
   matrixServer("elab", rv, "elab", "edge_labels")
   matrixServer("ov", rv, "ov", "overlay")
@@ -452,6 +458,7 @@ server <- function(input, output, session) {
       legend_node_shape = keep_rows(rv$legend_shapes, "shape"),
       link_props = keep_rows(rv$link_props, "from"),
       legend_linetypes = keep_rows(rv$legend_linetypes, "linetype"),
+      spans = keep_rows(rv$spans, "id"),
       settings = rv$settings)
   })
   built <- debounce(reactive({

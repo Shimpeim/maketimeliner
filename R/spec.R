@@ -15,7 +15,9 @@
   legend_shapes  = c("shape", "label"),
   link_props     = c("from", "to", "weight", "colour", "alpha", "width",
                      "linetype", "label", "description"),
-  legend_linetypes = c("linetype", "label", "colour", "width")
+  legend_linetypes = c("linetype", "label", "colour", "width"),
+  spans      = c("id", "start", "end", "label", "colour", "alpha", "width",
+                 "linetype", "line_colour", "line_width", "source", "description")
 )
 
 # Pad a data.frame to the canonical columns (keeps extra columns at the end).
@@ -112,6 +114,13 @@
 #'   appear in the HTML tooltip.
 #' @param legend_linetypes data.frame(`linetype`, `label`, `colour`, `width`)
 #'   for a legend section of line types (e.g. actors).
+#' @param spans Optional data.frame of durations: one row per period during
+#'   which an event is carried. `id` (event id), `start` (blank = the event's
+#'   `time`), `end` (on the same time axis), `label` (e.g. the carrying actor),
+#'   band style `colour`, `alpha`, `width` (thickness, px), centre-line style
+#'   `linetype`, `line_colour`, `line_width`, plus `source` and `description`
+#'   shown in the HTML. Several rows per event are drawn as parallel bands. The
+#'   event's lane stays reserved until the band ends.
 #' @param settings Named list or `Setting`/`Value` data.frame; see
 #'   [timeline_defaults()].
 #'
@@ -123,7 +132,7 @@ timeline_spec <- function(adj_matrix = NULL, node_props, streams = NULL,
                           overlay_edge_labels = NULL, windows = NULL,
                           phases = NULL, legend_node_colour = NULL,
                           legend_node_shape = NULL, link_props = NULL,
-                          legend_linetypes = NULL, settings = list()) {
+                          legend_linetypes = NULL, spans = NULL, settings = list()) {
   if (missing(node_props) || is.null(node_props) || !NROW(node_props))
     stop("node_props must be a data.frame with at least one row.", call. = FALSE)
   nodes <- .conform(node_props, "node_props")
@@ -184,6 +193,7 @@ timeline_spec <- function(adj_matrix = NULL, node_props, streams = NULL,
     legend_shapes       = .conform(legend_node_shape, "legend_shapes"),
     link_props          = .conform(link_props, "link_props"),
     legend_linetypes    = .conform(legend_linetypes, "legend_linetypes"),
+    spans               = .conform(spans, "spans"),
     settings            = .merge_settings(settings)
   ), class = "timeline_spec")
 }

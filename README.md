@@ -26,6 +26,7 @@ devtools::install("path/to/00_utilities_R/maketimeliner")
 | `_windows.csv` | periods (policy windows) | start, end, label, colour, alpha, stroke, stroke_width, linetype, streams, description |
 | `_overlay.csv` / `_overlay_edge_props.csv` / `_overlay_edge_labels.csv` | annotation arcs (e.g. coupling) | as above |
 | `_phases.csv` | ordinal time axis | phase, order, label |
+| `_spans.csv` | how long an event is carried (one row per period; several per event allowed) | id, start (blank = event time), end, label (e.g. carrying actor), colour, alpha, width, linetype, line_colour, line_width, source, description |
 | `_link_props.csv` | per-link style overrides (e.g. the actor behind a move between streams) | from, to, weight (blank = all timelines on the link), colour, alpha, width, linetype, label, description |
 | `_legend_linetypes.csv` | legend of line types | linetype, label, colour, width |
 | `_legend_colours.csv`, `_legend_shapes.csv` | legend | colour/shape, label |

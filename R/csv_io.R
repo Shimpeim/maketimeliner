@@ -9,6 +9,7 @@
   legend_linetypes    = "legend_linetypes",
   legend_shapes       = "legend_shapes",
   link_props          = "link_props",
+  spans               = "spans",
   edge_labels         = "edge_labels",
   edge_props          = "edge_props",
   node_props          = "node_props",
@@ -62,6 +63,7 @@
 #' | `_streams.csv` | `id, label, order, colour, alpha, stroke, stroke_width, linetype, height, fontcolour, description` |
 #' | `_windows.csv` | `start, end, label, colour, alpha, stroke, stroke_width, linetype, streams, description` |
 #' | `_phases.csv` | `phase, order, label` (ordinal time axis) |
+#' | `_spans.csv` | durations: `id, start, end, label, colour, alpha, width, linetype, line_colour, line_width, source, description` |
 #' | `_link_props.csv` | per-link style overrides: `from, to, weight, colour, alpha, width, linetype, label, description` |
 #' | `_legend_colours.csv`, `_legend_shapes.csv`, `_legend_linetypes.csv` | legend tables |
 #' | `_settings.csv` | `Setting, Value` |
@@ -118,6 +120,7 @@ read_timeline_csvs <- function(path, prefix = NULL) {
     legend_node_shape   = rd("legend_shapes"),
     link_props          = rd("link_props"),
     legend_linetypes    = rd("legend_linetypes"),
+    spans               = rd("spans"),
     settings            = { s <- rd("settings"); if (is.null(s)) list() else s }
   )
 }
@@ -160,7 +163,8 @@ write_timeline_csvs <- function(spec, dir, prefix = "timeline") {
     wm(spec$overlay_edge_labels, "overlay_edge_labels"),
     wdf(spec$windows, "windows"), wdf(spec$phases, "phases"),
     wdf(spec$legend_colours, "legend_colours"), wdf(spec$legend_shapes, "legend_shapes"),
-    wdf(spec$link_props, "link_props"), wdf(spec$legend_linetypes, "legend_linetypes")
+    wdf(spec$link_props, "link_props"), wdf(spec$legend_linetypes, "legend_linetypes"),
+    wdf(spec$spans, "spans")
   )
   utils::write.csv(.settings_to_df(spec$settings), fp("settings"), row.names = FALSE,
                    fileEncoding = "UTF-8")

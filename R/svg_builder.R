@@ -149,6 +149,27 @@
     add("</g>")
   }
 
+  # ── spans (durations), under links and events ───────────────────────────
+  sp <- L$spans
+  if (!is.null(sp) && nrow(sp)) {
+    add("<g class=\"tl-spans\" stroke-linecap=\"round\">")
+    for (k in seq_len(nrow(sp))) {
+      tip <- paste(c(sp$label[k], sp$source[k])[nzchar(c(sp$label[k], sp$source[k]))], collapse = " \u2014 ")
+      add(sprintf("<g class=\"tl-span\" data-id=\"%s\" data-span=\"%d\">", .esc(sp$id[k]), k))
+      add(sprintf("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"%s\" stroke-width=\"%s\" stroke-opacity=\"%s\"/>",
+                  .r(sp$x0[k]), .r(sp$y[k]), .r(sp$x1[k]), .r(sp$y[k]), .esc(sp$colour[k]),
+                  sp$width[k], sp$alpha[k]))
+      add(sprintf("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\"%s/>",
+                  .r(sp$x0[k]), .r(sp$y[k]), .r(sp$x1[k]), .r(sp$y[k]),
+                  .stroke_attr(sp$line_colour[k], sp$line_width[k], 1, sp$linetype[k])))
+      add(sprintf("<line x1=\"%s\" y1=\"%s\" x2=\"%s\" y2=\"%s\" stroke=\"%s\" stroke-width=\"1.5\"/>",
+                  .r(sp$x1[k]), .r(sp$y[k] - sp$width[k] / 2 - 2), .r(sp$x1[k]),
+                  .r(sp$y[k] + sp$width[k] / 2 + 2), .esc(sp$line_colour[k])))
+      add(sprintf("<title>%s</title></g>", .esc(tip)))
+    }
+    add("</g>")
+  }
+
   # ── overlay links (under timelines) ──────────────────────────────────────
   ov <- L$overlay
   if (nrow(ov)) {

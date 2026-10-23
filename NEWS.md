@@ -4,6 +4,18 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-23 — durations (spans)
+
+* New `spans` table (`_spans.csv`, Shiny "Spans" on the Events tab): an event
+  can be carried over a period, drawn as a band from start to end in the
+  event's stream (band colour/alpha/width + centre line pattern, e.g. the
+  carrying actor). Several spans per event stack. The lane stays reserved until
+  the span ends. `source` and `description` appear in the HTML tooltip and the
+  event's details ("Carried").
+* Ordinal axes now warn when a time value is missing from `phases` instead of
+  silently appending it at the end.
+* Fixed during development: a span test parsed attribute names as numbers (#13).
+
 ## 2026-10-23 — per-link styles
 
 * New `link_props` table (`_link_props.csv`, Shiny "Link styles"): overrides

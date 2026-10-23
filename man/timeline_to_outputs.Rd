@@ -19,6 +19,7 @@ timeline_to_outputs(
   legend_node_shape = NULL,
   link_props = NULL,
   legend_linetypes = NULL,
+  spans = NULL,
   settings = list(),
   html_file = "timeline.html",
   svg_file = "timeline.svg",
@@ -72,6 +73,14 @@ appear in the HTML tooltip.}
 
 \item{legend_linetypes}{data.frame(\code{linetype}, \code{label}, \code{colour}, \code{width})
 for a legend section of line types (e.g. actors).}
+
+\item{spans}{Optional data.frame of durations: one row per period during
+which an event is carried. \code{id} (event id), \code{start} (blank = the event's
+\code{time}), \code{end} (on the same time axis), \code{label} (e.g. the carrying actor),
+band style \code{colour}, \code{alpha}, \code{width} (thickness, px), centre-line style
+\code{linetype}, \code{line_colour}, \code{line_width}, plus \code{source} and \code{description}
+shown in the HTML. Several rows per event are drawn as parallel bands. The
+event's lane stays reserved until the band ends.}
 
 \item{settings}{Named list or \code{Setting}/\code{Value} data.frame; see
 \code{\link[=timeline_defaults]{timeline_defaults()}}.}
