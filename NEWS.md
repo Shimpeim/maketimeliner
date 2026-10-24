@@ -4,6 +4,12 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-24 — zoomable details pane
+
+* Details pane: larger text (15 px), A-/A+ and Ctrl/Cmd + scroll or pinch to
+  zoom, resizable width (drag the edge or the double-arrow button), pictures
+  fill the pane and open in a zoomable viewer on click; full title as heading (#16).
+
 ## 2026-10-24 — readable HTML viewer
 
 * The interactive HTML now opens at a readable scale (streams fill the panel

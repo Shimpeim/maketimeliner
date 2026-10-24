@@ -33,10 +33,18 @@ button:hover{background:#eee}
 #gp>svg{width:100%;height:100%;display:block}
 #zoomhint{position:absolute;right:10px;bottom:8px;font-size:10px;color:#bbb;pointer-events:none}
 /* info panel */
-#ip{width:30%;min-width:220px;max-width:420px;background:#fff;border-left:1px solid #e8e8e8;overflow-y:auto;padding:15px 13px;font-size:13px}
-#ip h3{font-size:13px;font-weight:700;color:#1a1a2e;margin:0 0 6px;border-bottom:1px solid #f0f0f0;padding-bottom:4px}
-#ip .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#aaa;margin-top:9px}
-#ip .v{margin-top:2px;line-height:1.5;white-space:pre-wrap}
+#ip{width:34%;min-width:240px;max-width:80vw;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;position:relative}
+#iph{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:5}
+#iph:hover,#iph.on{background:rgba(80,80,160,.15)}
+#ipbar{display:flex;gap:4px;align-items:center;padding:7px 10px;border-bottom:1px solid #f0f0f0;font-size:11px;color:#999}
+#ipbar span{flex:1}
+#ipc{overflow-y:auto;padding:14px 14px 30px;font-size:15px;color:#333;flex:1}
+#ipc h3{font-size:1.15em;font-weight:700;color:#1a1a2e;margin:0 0 .4em;border-bottom:1px solid #f0f0f0;padding-bottom:.3em}
+#ipc .k{font-size:.72em;text-transform:uppercase;letter-spacing:.05em;color:#999;margin-top:.8em}
+#ipc .v{margin-top:.15em;line-height:1.5;white-space:pre-wrap}
+#ipc .empty{font-size:.9em}
+#ipc .chip{font-size:.85em}
+#ipc .seq div{font-size:.95em}
 .chip{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:2px 9px;margin:2px 3px 2px 0;font-size:11px;background:#f3f3f6;cursor:pointer}
 .chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .seq{margin:4px 0 0 4px;border-left:2px solid #eee;padding-left:8px}
@@ -47,7 +55,12 @@ button:hover{background:#eee}
 /* tooltip */
 #tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:12px;padding:6px 9px;border-radius:5px;max-width:360px;line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
 #tt img{display:block;margin-top:6px;border-radius:3px;background:#fff;max-height:60vh;object-fit:contain}
-#ip img.pic{display:block;max-width:100%;margin:6px 0 4px;border-radius:4px;border:1px solid #eee}
+#ipc img.pic{display:block;width:100%;height:auto;margin:6px 0 4px;border-radius:4px;border:1px solid #eee;cursor:zoom-in}
+#lb{position:fixed;inset:0;background:rgba(15,15,25,.88);display:none;z-index:20;overflow:hidden;cursor:zoom-out}
+#lb img{position:absolute;left:50%;top:50%;transform-origin:center center;max-width:none;box-shadow:0 4px 30px rgba(0,0,0,.5);background:#fff;cursor:grab}
+#lbbar{position:absolute;right:14px;top:12px;display:flex;gap:6px;z-index:21}
+#lbbar button{font-size:13px;padding:4px 10px}
+#lbcap{position:absolute;left:14px;bottom:12px;right:14px;color:#ddd;font-size:13px;text-align:center}
 /* highlight states */
 svg .dim{opacity:.1;transition:opacity .15s}
 svg .hid{display:none}
@@ -73,14 +86,17 @@ svg .tl-node.hit circle,svg .tl-node.hit rect,svg .tl-node.hit ellipse,svg .tl-n
 </div>
 <div id="main">
   <div id="gp">__SVG__<div id="zoomhint">drag / scroll = move · Ctrl/⌘ + scroll or pinch = zoom</div></div>
-  <div id="ip"><h3>Details</h3><div class="empty">Click an event, a timeline or a window.</div></div>
+  <div id="ip"><div id="iph" title="Drag to resize"></div>
+    <div id="ipbar"><span>Details</span><button id="ipm" title="Smaller text">A−</button><button id="ipp" title="Larger text">A+</button><button id="ipw" title="Wider pane">↔</button></div>
+    <div id="ipc"><h3>Details</h3><div class="empty">Click an event, a timeline or a window. Click a picture to enlarge it.</div></div></div>
 </div>
 <div id="tt"></div>
+<div id="lb"><div id="lbbar"><button id="lbin">+</button><button id="lbout">−</button><button id="lbfit">Fit</button><button id="lbx">Close ✕</button></div><img alt=""><div id="lbcap"></div></div>
 <script>
 const D = __DATA__;
 (function(){
 const gp = document.getElementById('gp'), svg = gp.querySelector('svg');
-const ip = document.getElementById('ip'), tt = document.getElementById('tt');
+const ip = document.getElementById('ipc'), tt = document.getElementById('tt');
 svg.querySelectorAll('title').forEach(t => t.remove());   // custom tooltips instead
 const W0 = +svg.getAttribute('width'), H0 = +svg.getAttribute('height');
 svg.removeAttribute('width'); svg.removeAttribute('height');
@@ -187,12 +203,15 @@ function togglePin(c){ pinned.has(c) ? pinned.delete(c) : pinned.add(c); apply()
 
 /* ── info panel ── */
 const chip = c => { const t = TL[c]; return t ? '<span class="chip" data-c="' + esc(c) + '"><i style="background:' + esc(t.colour) + '"></i>' + esc(t.label) + '</span>' : ''; };
-function bindChips(){ ip.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { togglePin(ch.dataset.c); showTimeline(ch.dataset.c); });
+function bindChips(){ ip.querySelectorAll('img.pic').forEach(im => im.onclick = () => openLB(im.getAttribute('src'), im.getAttribute('data-cap') || ''));
+ ip.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { togglePin(ch.dataset.c); showTimeline(ch.dataset.c); });
   ip.querySelectorAll('[data-node]').forEach(d => d.onclick = () => showNode(d.dataset.node, true)); }
 function kv(k, v){ return v ? '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' : ''; }
 function showNode(id, centre){
   const n = ND[id]; if (!n) return;
-  let h = '<h3>' + esc(n.label) + '</h3>' + imgTag(n.image, 'pic') + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
+  // the diagram label may be shortened ('…'); the description's first line is the full title
+  const title = (/\u2026$/.test(n.label) && n.description) ? n.description.split('\n')[0] : n.label;
+  let h = '<h3>' + esc(title) + '</h3>' + imgTag(n.image, 'pic', title) + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
   if (n.codes.length) {
     h += '<div class="k">Timelines through this event</div><div class="v">' + n.codes.map(chip).join('') + '</div>';
     n.codes.forEach(c => { const t = TL[c];
@@ -241,7 +260,7 @@ const placeTT = (ev) => { if (ev) lastEv = ev; if (!lastEv) return;
 const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block'; placeTT(ev);
   tt.querySelectorAll('img').forEach(im => { im.onload = () => placeTT();
     im.onerror = () => { im.replaceWith(Object.assign(document.createElement('div'), {textContent: '[image not available: ' + (/^data:/.test(im.getAttribute('src')) ? 'embedded data' : im.getAttribute('src').replace(/^https?:\/\/([^/]+).*/, '$1')) + ']', style: 'color:#f99;font-size:11px;margin-top:4px'})); placeTT(); }; }); };
-const imgTag = (src, cls) => src ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + esc(src) + '" alt="" referrerpolicy="no-referrer" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
+const imgTag = (src, cls, cap) => src ? '<img' + (cls ? ' class="' + cls + '" title="Click to enlarge"' : '') + (cap ? ' data-cap="' + esc(cap) + '"' : '') + ' src="' + esc(src) + '" alt="" referrerpolicy="no-referrer" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
 const hideTT = () => { tt.style.display = 'none'; };
 q('.tl-edge').forEach(el => {
   const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
@@ -307,6 +326,40 @@ document.getElementById('bSvg').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = (D.title || 'timeline').replace(/[^\w\-]+/g, '_') + '.svg'; a.click();
 };
+/* ── details pane: text size, width, picture viewer ── */
+const pane = document.getElementById('ip');
+let ipz = 1; try { ipz = +localStorage.getItem('tl-ipz') || 1; } catch (e) {}
+const setIpz = z => { ipz = Math.min(Math.max(z, 0.7), 2.6); ip.style.fontSize = (15 * ipz) + 'px';
+  try { localStorage.setItem('tl-ipz', ipz); } catch (e) {} };
+setIpz(ipz);
+document.getElementById('ipp').onclick = () => setIpz(ipz * 1.15);
+document.getElementById('ipm').onclick = () => setIpz(ipz / 1.15);
+pane.addEventListener('wheel', ev => { if (!(ev.ctrlKey || ev.metaKey)) return;
+  ev.preventDefault(); setIpz(ipz * Math.exp(Math.max(Math.min(-ev.deltaY * 0.004, 0.2), -0.2))); }, {passive:false});
+const setW = w => { pane.style.width = Math.min(Math.max(w, 240), window.innerWidth * 0.8) + 'px'; };
+document.getElementById('ipw').onclick = () => {
+  const w = pane.getBoundingClientRect().width; setW(w < window.innerWidth * 0.45 ? window.innerWidth * 0.55 : window.innerWidth * 0.34); };
+const iph = document.getElementById('iph'); let rs = null;
+iph.addEventListener('mousedown', ev => { ev.preventDefault(); ev.stopPropagation(); rs = {x: ev.clientX, w: pane.getBoundingClientRect().width}; iph.classList.add('on'); });
+window.addEventListener('mousemove', ev => { if (rs) setW(rs.w + (rs.x - ev.clientX)); });
+window.addEventListener('mouseup', () => { if (rs) { rs = null; iph.classList.remove('on'); } });
+const lb = document.getElementById('lb'), lbi = lb.querySelector('img');
+let lz = 1, lx = 0, ly = 0, ld = null;
+const lbDraw = () => { lbi.style.transform = 'translate(calc(-50% + ' + lx + 'px), calc(-50% + ' + ly + 'px)) scale(' + lz + ')'; };
+const lbFit = () => { const w = lbi.naturalWidth || 1, h = lbi.naturalHeight || 1;
+  lz = Math.min(window.innerWidth * 0.92 / w, window.innerHeight * 0.85 / h); lx = 0; ly = 0; lbDraw(); };
+function openLB(src, cap){ lbi.onload = lbFit; lbi.src = src; document.getElementById('lbcap').textContent = cap; lb.style.display = 'block'; if (lbi.complete) lbFit(); }
+const closeLB = () => { lb.style.display = 'none'; };
+document.getElementById('lbx').onclick = closeLB;
+document.getElementById('lbfit').onclick = lbFit;
+document.getElementById('lbin').onclick = () => { lz *= 1.3; lbDraw(); };
+document.getElementById('lbout').onclick = () => { lz /= 1.3; lbDraw(); };
+lb.addEventListener('click', ev => { if (ev.target === lb) closeLB(); });
+lb.addEventListener('wheel', ev => { ev.preventDefault(); lz *= Math.exp(-ev.deltaY * 0.0025); lbDraw(); }, {passive:false});
+lbi.addEventListener('mousedown', ev => { ev.preventDefault(); ld = {x: ev.clientX - lx, y: ev.clientY - ly}; });
+window.addEventListener('mousemove', ev => { if (ld) { lx = ev.clientX - ld.x; ly = ev.clientY - ld.y; lbDraw(); } });
+window.addEventListener('mouseup', () => { ld = null; });
+window.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeLB(); });
 apply();
 })();
 </script>
