@@ -4,6 +4,14 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-24 — sizes without limits; adjustable hover text; picture sources
+
+* Removed the arbitrary limits on pane text size and diagram zoom (#17).
+* Hover (tooltip) text size adjustable in the HTML ("Text size" in the sidebar);
+  new settings `tooltip_fontsize`, `details_fontsize` for the start sizes (#18).
+* New `image_source` column: every picture keeps a link to its web source, also
+  when embedded; shown in the details pane, the picture viewer and the tooltip (#19).
+
 ## 2026-10-24 — zoomable details pane
 
 * Details pane: larger text (15 px), A-/A+ and Ctrl/Cmd + scroll or pinch to

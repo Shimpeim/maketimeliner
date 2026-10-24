@@ -268,7 +268,8 @@ ui <- fluidPage(
             "(YYYY-MM-DD / YYYY-MM) or phase name. <i>slot</i> 0–1 = manual vertical",
             "position inside the stream (blank = auto). Style: shape, colour, alpha, stroke,",
             "stroke_width, linetype, fontcolour, fontsize, width, height, label_position.",
-            "<i>image</i>: picture URL shown when hovering the event in the HTML.",
+            "<i>image</i>: picture URL shown when hovering the event in the HTML;",
+            "<i>image_source</i>: web page the picture comes from (linked in the HTML; blank = the image URL).",
             "Type <code>\\n</code> in a label for a line break.")),
           tableUI("spans", "Spans (how long an event is carried)", paste(
             "One row per period an event is carried: <b>id</b> (event), <i>start</i> (blank =",

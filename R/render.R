@@ -101,16 +101,24 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
   })
   tl <- Filter(function(t) length(t$nodes) > 0, tl)
   img <- .safe_url(nd$image)
+  # keep the web address of every picture: embedding replaces only what is
+  # displayed, the HTML still links each picture to its source (#19)
+  img_url <- img
+  img_src <- .safe_url(.chr(nd$image_source, ""))
+  img_src <- ifelse(nzchar(img_src), img_src, ifelse(grepl("^(https?:)?//", img_url), img_url, ""))
   if (isTRUE(L$S$embed_images)) img <- .embed_images(img, L$S$image_max_mb)
   w  <- L$windows
   list(
     title = L$S$title,
     image_width = L$S$tooltip_image_width,
+    tooltip_fontsize = L$S$tooltip_fontsize,
+    details_fontsize = L$S$details_fontsize,
     timelines = tl,
     nodes = lapply(seq_len(nrow(nd)), function(i)
       list(id = nd$id[i], label = gsub("\n", " ", nd$label[i]), t = nd$t[i],
            time_label = as.character(ts$fmt(nd$time[i])), stream = nd$stream[i],
            description = nd$description[i], image = img[i],
+           image_url = img_url[i], image_source = img_src[i],
            codes = I(codes_of[[i]]))),
     edges = lapply(seq_len(nrow(e)), function(i)
       list(code = e$code[i], from = e$from[i], to = e$to[i], text = e$text[i],

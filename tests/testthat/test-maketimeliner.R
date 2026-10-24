@@ -317,3 +317,34 @@ test_that("HTML with more than 1 MB of embedded pictures is complete (#14)", {
   expect_true(jsonlite::validate(sub(";\n$", "", sub("^const D = ", "",
     regmatches(out$html, regexpr("const D = .*?;\n", out$html))))))
 })
+
+test_that("embedded pictures stay linked to their web source (#19)", {
+  m <- mini()
+  png <- tempfile(fileext = ".png")
+  writeBin(jsonlite::base64_dec("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="), png)
+  m$nodes$image <- c(png, "https://example.org/b.png", "", "")
+  m$nodes$image_source <- c("https://commons.wikimedia.org/wiki/File:A.png", "", "", "")
+  # the placeholder web picture cannot be embedded: warning expected, link must survive
+  expect_warning(out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL),
+                 "Could not embed")
+  d <- html_data(out$html)
+  expect_match(d$nodes[[1]]$image, "^data:image/png")
+  expect_equal(d$nodes[[1]]$image_source, "https://commons.wikimedia.org/wiki/File:A.png")
+  expect_equal(d$nodes[[1]]$image_url, png)
+  # no image_source given: the web image URL itself is the source link
+  expect_equal(d$nodes[[2]]$image_source, "https://example.org/b.png")
+  expect_equal(d$nodes[[3]]$image_source, "")
+  expect_match(out$html, "Image source: <a href=", fixed = TRUE)
+})
+
+test_that("text sizes are settings passed to the HTML, with no upper limit in the viewer (#17, #18)", {
+  m <- mini()
+  out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL,
+                             tooltip_fontsize = 22, details_fontsize = 26)
+  d <- html_data(out$html)
+  expect_equal(d$tooltip_fontsize, 22)
+  expect_equal(d$details_fontsize, 26)
+  expect_match(out$html, 'id="ttp"', fixed = TRUE)
+  expect_false(grepl("Math.min(Math.max(z, 0.7), 2.6)", out$html, fixed = TRUE))
+  expect_false(grepl("W0 * 4", out$html, fixed = TRUE))
+})

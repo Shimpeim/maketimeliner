@@ -2,7 +2,7 @@
 .table_cols <- list(
   node_props = c("id", "label", "time", "stream", "slot", "shape", "colour",
                  "alpha", "stroke", "stroke_width", "linetype", "fontcolour",
-                 "fontsize", "width", "height", "label_position", "image",
+                 "fontsize", "width", "height", "label_position", "image", "image_source",
                  "description"),
   streams    = c("id", "label", "order", "colour", "alpha", "stroke",
                  "stroke_width", "linetype", "height", "fontcolour", "description"),
@@ -86,7 +86,9 @@
 #'   Optional: `label`, `slot` (0-1 vertical position inside the stream; blank =
 #'   automatic), `shape`, `colour`, `alpha`, `stroke`, `stroke_width`,
 #'   `linetype`, `fontcolour`, `fontsize`, `width`, `height`, `label_position`,
-#'   `image` (picture URL shown on mouse-over in the HTML), `description`
+#'   `image` (picture URL shown on mouse-over in the HTML), `image_source` (web
+#'   page the picture comes from, linked in the HTML; blank = the `image` URL),
+#'   `description`
 #'   (shown in the HTML info panel). `color`/`fontcolor` accepted.
 #' @param streams data.frame of streams (lanes): `id`, `label`, `order`,
 #'   `colour`, `alpha`, `stroke`, `stroke_width`, `linetype`, `height`,

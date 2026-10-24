@@ -53,7 +53,13 @@ button:hover{background:#eee}
 .seq .cur{font-weight:700}
 .empty{color:#bbb;font-style:italic;font-size:12px}
 /* tooltip */
-#tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:12px;padding:6px 9px;border-radius:5px;max-width:360px;line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
+#tt{position:fixed;pointer-events:none;background:rgba(26,26,46,.92);color:#fff;font-size:14px;padding:.45em .7em;border-radius:5px;max-width:min(30em,90vw);line-height:1.4;display:none;z-index:10;white-space:pre-wrap}
+#tt .src{display:block;margin-top:.3em;font-size:.8em;color:#bbb}
+.ts{display:flex;align-items:center;gap:4px;margin:3px 0;font-size:12px;color:#555}
+.ts span{flex:1}
+.ts b{font-weight:600;color:#333;min-width:3.2em;text-align:right;display:inline-block;letter-spacing:0;text-transform:none;font-size:12px;margin:0}
+#ipc .isrc{font-size:.8em;color:#777;margin:-2px 0 8px;word-break:break-all}
+#lbcap a,#ipc .isrc a{color:inherit}
 #tt img{display:block;margin-top:6px;border-radius:3px;background:#fff;max-height:60vh;object-fit:contain}
 #ipc img.pic{display:block;width:100%;height:auto;margin:6px 0 4px;border-radius:4px;border:1px solid #eee;cursor:zoom-in}
 #lb{position:fixed;inset:0;background:rgba(15,15,25,.88);display:none;z-index:20;overflow:hidden;cursor:zoom-out}
@@ -82,6 +88,9 @@ svg .tl-node.hit circle,svg .tl-node.hit rect,svg .tl-node.hit ellipse,svg .tl-n
     <button id="bZin" title="Zoom in">+</button><button id="bZout" title="Zoom out">−</button>
     <button id="bReset">Readable size</button><button id="bFit">Whole diagram</button><button id="bClear">Clear highlight</button>
     <button id="bSvg">Download SVG</button></div></div>
+  <div class="c"><b>Text size</b>
+    <div class="ts"><span>Hover text</span><button id="ttm" title="Smaller hover text">A−</button><button id="ttp" title="Larger hover text">A+</button><b id="ttv"></b></div>
+    <div class="ts"><span>Details pane</span><button id="ipm2" title="Smaller">A−</button><button id="ipp2" title="Larger">A+</button><b id="ipv"></b></div></div>
   <div class="c" style="font-size:11px;color:#999;line-height:1.5">Hover a timeline to highlight it; click to pin (several can be pinned). Click an event for details. Drag or scroll to move; Ctrl/⌘ + scroll (or pinch) to zoom.</div>
 </div>
 <div id="main">
@@ -130,7 +139,7 @@ const pt = (ev) => { const r = svg.getBoundingClientRect();
   const ox = (r.width * s - vb.w) / 2, oy = (r.height * s - vb.h) / 2;
   return {x: vb.x - ox + (ev.clientX - r.left) * s, y: vb.y - oy + (ev.clientY - r.top) * s, s: s}; };
 function zoomAt(p, k){
-  const nw = Math.min(Math.max(vb.w * k, 60), W0 * 4); const kk = nw / vb.w;
+  const nw = Math.max(vb.w * k, 1); const kk = nw / vb.w;   // no fixed zoom limits (#17)
   vb = {x: p.x - (p.x - vb.x) * kk, y: p.y - (p.y - vb.y) * kk, w: nw, h: vb.h * kk}; setVB(); }
 // scroll / two-finger swipe = pan; Ctrl/Cmd + scroll or pinch = zoom
 gp.addEventListener('wheel', ev => { ev.preventDefault();
@@ -203,7 +212,7 @@ function togglePin(c){ pinned.has(c) ? pinned.delete(c) : pinned.add(c); apply()
 
 /* ── info panel ── */
 const chip = c => { const t = TL[c]; return t ? '<span class="chip" data-c="' + esc(c) + '"><i style="background:' + esc(t.colour) + '"></i>' + esc(t.label) + '</span>' : ''; };
-function bindChips(){ ip.querySelectorAll('img.pic').forEach(im => im.onclick = () => openLB(im.getAttribute('src'), im.getAttribute('data-cap') || ''));
+function bindChips(){ ip.querySelectorAll('img.pic').forEach(im => im.onclick = () => openLB(im.getAttribute('src'), im.getAttribute('data-cap') || '', im.getAttribute('data-src') || ''));
  ip.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { togglePin(ch.dataset.c); showTimeline(ch.dataset.c); });
   ip.querySelectorAll('[data-node]').forEach(d => d.onclick = () => showNode(d.dataset.node, true)); }
 function kv(k, v){ return v ? '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' : ''; }
@@ -211,7 +220,7 @@ function showNode(id, centre){
   const n = ND[id]; if (!n) return;
   // the diagram label may be shortened ('…'); the description's first line is the full title
   const title = (/\u2026$/.test(n.label) && n.description) ? n.description.split('\n')[0] : n.label;
-  let h = '<h3>' + esc(title) + '</h3>' + imgTag(n.image, 'pic', title) + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
+  let h = '<h3>' + esc(title) + '</h3>' + imgTag(n.image, 'pic', title, n.image_source) + srcLink(n) + kv('Time', n.time_label) + kv('Stream', (ST[n.stream] || {}).label || n.stream) + kv('Description', n.description);
   if (n.codes.length) {
     h += '<div class="k">Timelines through this event</div><div class="v">' + n.codes.map(chip).join('') + '</div>';
     n.codes.forEach(c => { const t = TL[c];
@@ -260,7 +269,9 @@ const placeTT = (ev) => { if (ev) lastEv = ev; if (!lastEv) return;
 const showTT = (ev, html) => { tt.innerHTML = html; tt.style.display = 'block'; placeTT(ev);
   tt.querySelectorAll('img').forEach(im => { im.onload = () => placeTT();
     im.onerror = () => { im.replaceWith(Object.assign(document.createElement('div'), {textContent: '[image not available: ' + (/^data:/.test(im.getAttribute('src')) ? 'embedded data' : im.getAttribute('src').replace(/^https?:\/\/([^/]+).*/, '$1')) + ']', style: 'color:#f99;font-size:11px;margin-top:4px'})); placeTT(); }; }); };
-const imgTag = (src, cls, cap) => src ? '<img' + (cls ? ' class="' + cls + '" title="Click to enlarge"' : '') + (cap ? ' data-cap="' + esc(cap) + '"' : '') + ' src="' + esc(src) + '" alt="" referrerpolicy="no-referrer" style="max-width:' + (cls ? '100%' : (+D.image_width || 240) + 'px') + '">' : '';
+const host = u => { try { return new URL(u, location.href).host || u; } catch (e) { return u; } };
+const srcLink = n => n.image_source ? '<div class="isrc">Image source: <a href="' + esc(n.image_source) + '" target="_blank" rel="noopener noreferrer">' + esc(n.image_source) + '</a></div>' : '';
+const imgTag = (src, cls, cap, isrc) => src ? '<img' + (cls ? ' class="' + cls + '" title="Click to enlarge"' : '') + (cap ? ' data-cap="' + esc(cap) + '"' : '') + (isrc ? ' data-src="' + esc(isrc) + '"' : '') + ' src="' + esc(src) + '" alt="" referrerpolicy="no-referrer" style="' + (cls ? 'max-width:100%' : 'width:' + ((+D.image_width || 240) / 14) + 'em;max-width:100%') + '">' : '';
 const hideTT = () => { tt.style.display = 'none'; };
 q('.tl-edge').forEach(el => {
   const c = el.getAttribute('data-tl'), e = D.edges[+el.id.slice(4) - 1], t = TL[c];
@@ -278,7 +289,7 @@ q('.tl-label, .tl-legend-item[data-tl]').forEach(el => {
 });
 q('.tl-node').forEach(el => {
   const id = el.getAttribute('data-id'), n = ND[id];
-  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n.label) + '</b>\n' + esc(n.time_label) + ' · ' + esc((ST[n.stream]||{}).label || n.stream) + (n.description ? '\n' + esc(n.description) : '') + imgTag(n.image)));
+  el.addEventListener('mouseenter', ev => showTT(ev, '<b>' + esc(n.label) + '</b>\n' + esc(n.time_label) + ' · ' + esc((ST[n.stream]||{}).label || n.stream) + (n.description ? '\n' + esc(n.description) : '') + imgTag(n.image) + (n.image_source ? '<span class="src">Image: ' + esc(host(n.image_source)) + ' (link in details)</span>' : '')));
   el.addEventListener('mousemove', placeTT);
   el.addEventListener('mouseleave', hideTT);
   el.addEventListener('click', () => { if (!moved) showNode(id, false); });
@@ -328,11 +339,23 @@ document.getElementById('bSvg').onclick = () => {
 };
 /* ── details pane: text size, width, picture viewer ── */
 const pane = document.getElementById('ip');
+const IPF = +D.details_fontsize || 15;
 let ipz = 1; try { ipz = +localStorage.getItem('tl-ipz') || 1; } catch (e) {}
-const setIpz = z => { ipz = Math.min(Math.max(z, 0.7), 2.6); ip.style.fontSize = (15 * ipz) + 'px';
+const setIpz = z => { ipz = Math.max(z, 0.05); ip.style.fontSize = (IPF * ipz) + 'px';  // no upper limit (#17)
+  const v = document.getElementById('ipv'); if (v) v.textContent = Math.round(IPF * ipz) + ' px';
   try { localStorage.setItem('tl-ipz', ipz); } catch (e) {} };
 setIpz(ipz);
 document.getElementById('ipp').onclick = () => setIpz(ipz * 1.15);
+document.getElementById('ipp2').onclick = () => setIpz(ipz * 1.15);
+document.getElementById('ipm2').onclick = () => setIpz(ipz / 1.15);
+const TTF = +D.tooltip_fontsize || 14;
+let ttz = 1; try { ttz = +localStorage.getItem('tl-ttz') || 1; } catch (e) {}
+const setTtz = z => { ttz = Math.max(z, 0.05); tt.style.fontSize = (TTF * ttz) + 'px';   // no upper limit
+  document.getElementById('ttv').textContent = Math.round(TTF * ttz) + ' px';
+  try { localStorage.setItem('tl-ttz', ttz); } catch (e) {} };
+setTtz(ttz);
+document.getElementById('ttp').onclick = () => setTtz(ttz * 1.15);
+document.getElementById('ttm').onclick = () => setTtz(ttz / 1.15);
 document.getElementById('ipm').onclick = () => setIpz(ipz / 1.15);
 pane.addEventListener('wheel', ev => { if (!(ev.ctrlKey || ev.metaKey)) return;
   ev.preventDefault(); setIpz(ipz * Math.exp(Math.max(Math.min(-ev.deltaY * 0.004, 0.2), -0.2))); }, {passive:false});
@@ -348,7 +371,9 @@ let lz = 1, lx = 0, ly = 0, ld = null;
 const lbDraw = () => { lbi.style.transform = 'translate(calc(-50% + ' + lx + 'px), calc(-50% + ' + ly + 'px)) scale(' + lz + ')'; };
 const lbFit = () => { const w = lbi.naturalWidth || 1, h = lbi.naturalHeight || 1;
   lz = Math.min(window.innerWidth * 0.92 / w, window.innerHeight * 0.85 / h); lx = 0; ly = 0; lbDraw(); };
-function openLB(src, cap){ lbi.onload = lbFit; lbi.src = src; document.getElementById('lbcap').textContent = cap; lb.style.display = 'block'; if (lbi.complete) lbFit(); }
+function openLB(src, cap, isrc){ lbi.onload = lbFit; lbi.src = src;
+  document.getElementById('lbcap').innerHTML = esc(cap) + (isrc ? '<br>Image source: <a href="' + esc(isrc) + '" target="_blank" rel="noopener noreferrer">' + esc(isrc) + '</a>' : '');
+  lb.style.display = 'block'; if (lbi.complete) lbFit(); }
 const closeLB = () => { lb.style.display = 'none'; };
 document.getElementById('lbx').onclick = closeLB;
 document.getElementById('lbfit').onclick = lbFit;
