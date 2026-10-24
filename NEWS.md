@@ -4,6 +4,13 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-24 — readable HTML viewer
+
+* The interactive HTML now opens at a readable scale (streams fill the panel
+  height; text never below ~80 %) instead of fitting the whole width; scroll
+  pans, Ctrl/Cmd + scroll or pinch zooms; new +, -, "Readable size" and
+  "Whole diagram" buttons (#15).
+
 ## 2026-10-24 — fix: complete HTML with large embedded pictures
 
 * Fixed: with `embed_images = TRUE`, pages longer than one million characters

@@ -66,12 +66,13 @@ svg .tl-node.hit circle,svg .tl-node.hit rect,svg .tl-node.hit ellipse,svg .tl-n
   <div class="c"><b>Timelines <span class="mini" id="allTl">all</span><span class="mini" id="noneTl">none</span></b><div id="tlList"></div></div>
   <div class="c"><b>Streams</b><div id="stList"></div></div>
   <div class="c"><b>View</b><div class="btns">
-    <button id="bReset">Reset view</button><button id="bClear">Clear highlight</button>
+    <button id="bZin" title="Zoom in">+</button><button id="bZout" title="Zoom out">−</button>
+    <button id="bReset">Readable size</button><button id="bFit">Whole diagram</button><button id="bClear">Clear highlight</button>
     <button id="bSvg">Download SVG</button></div></div>
-  <div class="c" style="font-size:11px;color:#999;line-height:1.5">Hover a timeline to highlight it; click to pin (several can be pinned). Click an event for details. Scroll to zoom, drag to pan.</div>
+  <div class="c" style="font-size:11px;color:#999;line-height:1.5">Hover a timeline to highlight it; click to pin (several can be pinned). Click an event for details. Drag or scroll to move; Ctrl/⌘ + scroll (or pinch) to zoom.</div>
 </div>
 <div id="main">
-  <div id="gp">__SVG__<div id="zoomhint">scroll = zoom · drag = pan</div></div>
+  <div id="gp">__SVG__<div id="zoomhint">drag / scroll = move · Ctrl/⌘ + scroll or pinch = zoom</div></div>
   <div id="ip"><h3>Details</h3><div class="empty">Click an event, a timeline or a window.</div></div>
 </div>
 <div id="tt"></div>
@@ -93,16 +94,34 @@ const attrEq = (a, v) => '[' + a + '="' + CSS.escape(v) + '"]';
 /* ── pan / zoom (viewBox) ── */
 let vb = {x:0, y:0, w:W0, h:H0};
 const setVB = () => svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
-function fit(){ vb = {x:0, y:0, w:W0, h:H0}; setVB(); }
+const box = () => gp.getBoundingClientRect();
+// show the given scale (screen px per diagram unit), keeping the panel's aspect ratio
+function setScale(s, x, y){ const r = box(); vb = {x: x, y: y, w: r.width / s, h: r.height / s}; setVB(); }
+function fitAll(){ const r = box(); setScale(Math.min(r.width / W0, r.height / H0), 0, 0); }
+// readable start: the streams fill the panel height, but text never smaller
+// than ~80% of its size; wide diagrams start at the left and are panned
+function fit(){
+  const r = box(), st = svg.querySelector('.tl-streams');
+  const hb = st ? st.getBBox().y + st.getBBox().height + 50 : H0;
+  const s = Math.min(Math.max(r.height / hb, 0.8), 1.4);
+  if (W0 * s <= r.width && H0 * s <= r.height) return fitAll();
+  setScale(s, 0, 0);
+}
 fit();
+window.addEventListener('resize', () => setScale(box().width / vb.w, vb.x, vb.y));
 const pt = (ev) => { const r = svg.getBoundingClientRect();
   const s = Math.max(vb.w / r.width, vb.h / r.height);
   const ox = (r.width * s - vb.w) / 2, oy = (r.height * s - vb.h) / 2;
   return {x: vb.x - ox + (ev.clientX - r.left) * s, y: vb.y - oy + (ev.clientY - r.top) * s, s: s}; };
+function zoomAt(p, k){
+  const nw = Math.min(Math.max(vb.w * k, 60), W0 * 4); const kk = nw / vb.w;
+  vb = {x: p.x - (p.x - vb.x) * kk, y: p.y - (p.y - vb.y) * kk, w: nw, h: vb.h * kk}; setVB(); }
+// scroll / two-finger swipe = pan; Ctrl/Cmd + scroll or pinch = zoom
 gp.addEventListener('wheel', ev => { ev.preventDefault();
-  const p = pt(ev), k = Math.exp(ev.deltaY * 0.0015);
-  const nw = Math.min(Math.max(vb.w * k, W0 / 20), W0 * 4); const kk = nw / vb.w;
-  vb = {x: p.x - (p.x - vb.x) * kk, y: p.y - (p.y - vb.y) * kk, w: nw, h: vb.h * kk}; setVB(); }, {passive:false});
+  if (ev.ctrlKey || ev.metaKey) return zoomAt(pt(ev), Math.exp(ev.deltaY * 0.01));
+  const u = vb.w / box().width, dx = ev.shiftKey ? ev.deltaY : ev.deltaX, dy = ev.shiftKey ? 0 : ev.deltaY;
+  vb.x += dx * u; vb.y += dy * u; setVB(); }, {passive:false});
+const centre = () => ({x: vb.x + vb.w / 2, y: vb.y + vb.h / 2});
 let drag = null, moved = false;
 gp.addEventListener('mousedown', ev => { drag = {cx: ev.clientX, cy: ev.clientY, x: vb.x, y: vb.y, s: pt(ev).s}; moved = false; });
 window.addEventListener('mousemove', ev => { if (!drag) return;
@@ -275,6 +294,9 @@ document.getElementById('q').addEventListener('input', ev => {
 
 /* ── buttons ── */
 document.getElementById('bReset').onclick = fit;
+document.getElementById('bFit').onclick = fitAll;
+document.getElementById('bZin').onclick = () => zoomAt(centre(), 1 / 1.4);
+document.getElementById('bZout').onclick = () => zoomAt(centre(), 1.4);
 document.getElementById('bClear').onclick = () => { pinned.clear(); hover = null; hitNodes = new Set(); document.getElementById('q').value = ''; apply(); };
 document.getElementById('bSvg').onclick = () => {
   const c = svg.cloneNode(true); c.setAttribute('viewBox', '0 0 ' + W0 + ' ' + H0);
