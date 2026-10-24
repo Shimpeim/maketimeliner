@@ -348,3 +348,14 @@ test_that("text sizes are settings passed to the HTML, with no upper limit in th
   expect_false(grepl("Math.min(Math.max(z, 0.7), 2.6)", out$html, fixed = TRUE))
   expect_false(grepl("W0 * 4", out$html, fixed = TRUE))
 })
+
+test_that("no fixed pixel font sizes in the interface; interface size is a setting (#20)", {
+  m <- mini()
+  out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL, ui_fontsize = 20)
+  expect_equal(html_data(out$html)$ui_fontsize, 20)
+  css <- sub("</style>.*", "", out$html)
+  fixed <- regmatches(css, gregexpr("[^\n]*font-size:[0-9.]+px[^\n]*", css))[[1]]
+  # only the two elements with their own size controls may start in px
+  expect_true(all(grepl("^#(ipc|tt)\\{", fixed)))
+  expect_match(out$html, 'id="uip"', fixed = TRUE)
+})

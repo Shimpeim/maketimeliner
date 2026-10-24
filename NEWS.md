@@ -4,6 +4,12 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-24 — no fixed font sizes in the interface
+
+* All interface text (sidebar, pane header, buttons, picture viewer) scales with
+  a new "Interface" A-/A+ control; start size from the new setting `ui_fontsize`;
+  the diagram keeps its scale when the sidebar grows (#20).
+
 ## 2026-10-24 — sizes without limits; adjustable hover text; picture sources
 
 * Removed the arbitrary limits on pane text size and diagram zoom (#17).

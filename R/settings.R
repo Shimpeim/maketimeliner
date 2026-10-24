@@ -70,6 +70,7 @@ timeline_defaults <- function() {
     tooltip_image_width = 240,        # px; width of node pictures on mouse-over (scales with tooltip text)
     tooltip_fontsize   = 14,          # px; start size of mouse-over text (adjustable in the HTML)
     details_fontsize   = 15,          # px; start size of the details pane (adjustable in the HTML)
+    ui_fontsize        = 14,          # px; start size of the interface text: sidebar, pane header, buttons (adjustable)
     embed_images       = TRUE,        # download pictures at render time into the HTML
     image_max_mb       = 5,           # skip embedding pictures larger than this
     show_legend        = TRUE,

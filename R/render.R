@@ -113,6 +113,7 @@ timeline_to_outputs <- function(adj_matrix, node_props, streams = NULL,
     image_width = L$S$tooltip_image_width,
     tooltip_fontsize = L$S$tooltip_fontsize,
     details_fontsize = L$S$details_fontsize,
+    ui_fontsize = L$S$ui_fontsize,
     timelines = tl,
     nodes = lapply(seq_len(nrow(nd)), function(i)
       list(id = nd$id[i], label = gsub("\n", " ", nd$label[i]), t = nd$t[i],
