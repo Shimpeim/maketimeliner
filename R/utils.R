@@ -127,7 +127,9 @@
     i <- regexpr(ph, x, fixed = TRUE)
     if (i < 0) break
     out <- c(out, substr(x, 1L, i - 1L), val)
-    x   <- substring(x, i + nchar(ph))
+    # explicit end: substring()'s default `last = 1000000L` silently cut
+    # anything beyond one million characters (#14)
+    x   <- substr(x, i + nchar(ph), nchar(x))
   }
   paste0(paste(out, collapse = ""), x)
 }

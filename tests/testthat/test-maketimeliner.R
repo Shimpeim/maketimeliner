@@ -297,3 +297,23 @@ test_that("ordinal values missing from phases warn", {
                                      phases = data.frame(phase = c("A", "B"), order = 1:2)),
                  "not listed in phases")
 })
+
+test_that(".fill keeps text beyond one million characters (#14)", {
+  big <- strrep("a", 1500000)
+  x <- maketimeliner:::.fill(paste0("<p>__X__</p>", big, "</html>"), "__X__", "ok")
+  expect_equal(nchar(x), nchar(big) + nchar("<p>ok</p></html>"))
+  expect_match(substr(x, nchar(x) - 6, nchar(x)), "</html>", fixed = TRUE)
+})
+
+test_that("HTML with more than 1 MB of embedded pictures is complete (#14)", {
+  m <- mini()
+  png <- tempfile(fileext = ".png")
+  hdr <- jsonlite::base64_dec("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+  writeBin(c(hdr, as.raw(rep(0, 900000))), png)   # valid PNG header + padding: ~1.2 MB as base64
+  m$nodes$image <- c(png, png, "", "")
+  out <- timeline_to_outputs(m$adj, m$nodes, html_file = NULL, svg_file = NULL)
+  expect_gt(nchar(out$html), 1e6)
+  expect_match(substr(out$html, nchar(out$html) - 20, nchar(out$html)), "</html>", fixed = TRUE)
+  expect_true(jsonlite::validate(sub(";\n$", "", sub("^const D = ", "",
+    regmatches(out$html, regexpr("const D = .*?;\n", out$html))))))
+})

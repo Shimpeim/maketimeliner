@@ -4,6 +4,11 @@ Every error found during development is recorded as a GitHub issue (symptom,
 cause, fix steps, verification, fixing commit) and closed with a link to the
 fix: <https://github.com/Shimpeim/maketimeliner/issues?q=is%3Aissue>.
 
+## 2026-10-24 — fix: complete HTML with large embedded pictures
+
+* Fixed: with `embed_images = TRUE`, pages longer than one million characters
+  were cut off, because `substring()` defaults to `last = 1000000` (#14).
+
 ## 2026-10-23 — durations (spans)
 
 * New `spans` table (`_spans.csv`, Shiny "Spans" on the Events tab): an event
